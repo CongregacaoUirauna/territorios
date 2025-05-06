@@ -1,33 +1,101 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Designação de Territórios</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f9f9f9; }
-    h1 { color: #2a6b77; text-align: center; margin-bottom: 20px; }
-    form { max-width: 600px; margin: 0 auto 30px; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    form input, form button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    form button { background-color: #2a6b77; color: #fff; cursor: pointer; border: none; }
-    form button:hover { opacity: 0.9; }
-    table { width: 100%; border-collapse: collapse; max-width: 800px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #d68f00; color: #fff; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f1f1f1;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2a6b77;
+    }
+
+    form {
+      background-color: #fff;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    input[type="text"],
+    input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #2a6b77;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1e4c55;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 40px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    th {
+      background-color: #d68f00;
+      color: white;
+      padding: 10px;
+      text-align: left;
+    }
+
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
   </style>
 </head>
 <body>
-  <h1>Designação de Territórios3</h1>
+  <h1>Designação de Territórios4</h1>
 
-  <form id="territorioForm">
-    <label>Data de Início:<input type="date" name="inicio" required></label>
-    <label>Data de Conclusão:<input type="date" name="conclusao" required></label>
-    <label>Nº do Território:<input type="number" name="territorio" required></label>
-    <label>Designado:<input type="text" name="designado" required></label>
+  <form id="territorio-form">
+    <label for="inicio">Data de Início:</label>
+    <input type="date" id="inicio" name="inicio" required>
+
+    <label for="conclusao">Data de Conclusão:</label>
+    <input type="date" id="conclusao" name="conclusao" required>
+
+    <label for="territorio">Nº do Território:</label>
+    <input type="text" id="territorio" name="territorio" required>
+
+    <label for="designado">Designado:</label>
+    <input type="text" id="designado" name="designado" required>
+
     <button type="submit">Salvar</button>
   </form>
 
-  <table id="tabela">
+  <table id="dados-tabela">
     <thead>
       <tr>
         <th>Data de Início</th>
@@ -36,53 +104,74 @@
         <th>Designado</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="tabela-body">
+      <!-- Dados carregados aqui -->
+    </tbody>
   </table>
 
   <script>
-const scriptURL = 'https://script.google.com/macros/s/AKfycby2RtId6sREWbmyuIGdL1Dw0v4vSB4tKoh9-JmiZff-o08Zgc2ErJ38hkIOvNWhs_7o6A/exec';
-    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg/export?format=csv&sheet=dados';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycby2RtId6sREWbmyuIGdL1Dw0v4vSB4tKoh9-JmiZff-o08Zgc2ErJ38hkIOvNWhs_7o6A/exec';
 
-    document.getElementById('territorioForm').addEventListener('submit', async e => {
+    const form = document.getElementById('territorio-form');
+    const tabelaBody = document.getElementById('tabela-body');
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(e.target));
+
+      const dados = {
+        inicio: document.getElementById('inicio').value,
+        conclusao: document.getElementById('conclusao').value,
+        territorio: document.getElementById('territorio').value,
+        designado: document.getElementById('designado').value
+      };
+
       try {
-        const res = await fetch(WEB_APP_URL, {
+        const resposta = await fetch(scriptURL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(dados)
         });
-        const json = await res.json();
-        alert('Resposta do servidor: ' + JSON.stringify(json));
-        e.target.reset();
-        carregarTabela();
-      } catch (err) {
-        alert('Erro de rede: ' + err);
+
+        const resultado = await resposta.json();
+        if (resultado.status === 'sucesso') {
+          alert('Dados salvos com sucesso!');
+          form.reset();
+          carregarTabela(); // recarrega os dados
+        } else {
+          alert('Erro ao salvar dados.');
+        }
+      } catch (erro) {
+        console.error('Erro de rede:', erro);
+        alert('Erro ao salvar dados.');
       }
     });
 
     async function carregarTabela() {
       try {
-        const res = await fetch(SHEET_CSV_URL);
-        const text = await res.text();
-        const rows = text.trim().split('\n').slice(1);
-        const tbody = document.querySelector('#tabela tbody');
-        tbody.innerHTML = '';
-        rows.forEach(line => {
-          const [inicio, conclusao, territorio, designado] = line.split(',');
+        const resposta = await fetch(scriptURL);
+        const dados = await resposta.json();
+
+        tabelaBody.innerHTML = '';
+
+        dados.reverse().forEach(linha => {
           const tr = document.createElement('tr');
-          [inicio, conclusao, territorio, designado].forEach(txt => {
-            const td = document.createElement('td');
-            td.textContent = txt;
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
+          tr.innerHTML = `
+            <td>${linha.inicio}</td>
+            <td>${linha.conclusao}</td>
+            <td>${linha.territorio}</td>
+            <td>${linha.designado}</td>
+          `;
+          tabelaBody.appendChild(tr);
         });
-      } catch (err) {
-        console.error('Erro ao carregar tabela:', err);
+      } catch (erro) {
+        console.error('Erro ao carregar tabela:', erro);
       }
     }
 
+    // Carrega a tabela ao abrir a página
     carregarTabela();
   </script>
 </body>
