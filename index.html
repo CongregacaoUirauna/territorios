@@ -1,3 +1,4 @@
+=== index.html ===
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -94,15 +95,13 @@
         <th>Designado</th>
       </tr>
     </thead>
-    <tbody>
-      <!-- Linhas geradas dinamicamente -->
-    </tbody>
+    <tbody></tbody>
   </table>
 
   <script>
-    // Substitua pelas suas URLs:
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrVx8pFlYPBUFOJlZhUhdyDb5ghJNeBky5jux56GH-VqLsAo2yMyqv3zHwjrDv6NpoSw/exec';
-    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg/export?format=csv&sheet=dados';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxqAHoD9a1R3b8snsUBz7GHmrN_TUYPWvWMpZRPHlIvLW48xxXMNP8JZi1vbl6ErgfPUg/exec';
+    const SHEET_CSV_URL =
+      'https://docs.google.com/spreadsheets/d/1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg/export?format=csv&sheet=dados';
 
     document.getElementById('territorioForm').addEventListener('submit', async e => {
       e.preventDefault();
@@ -142,8 +141,51 @@
       }
     }
 
-    // Carrega ao iniciar
     carregarTabela();
   </script>
 </body>
 </html>
+
+=== Code.gs ===
+// Google Apps Script para receber dados via POST e gravar na planilha
+
+function doPost(e) {
+  Logger.log('doPost chamado, payload: ' + JSON.stringify(e));
+  try {
+    if (!e.postData || !e.postData.contents) {
+      throw new Error('Corpo da requisição vazio ou inválido');
+    }
+    var dados = JSON.parse(e.postData.contents);
+    Logger.log('Dados parseados: ' + JSON.stringify(dados));
+    var inicio     = dados.inicio;
+    var conclusao  = dados.conclusao;
+    var territorio  = dados.territorio;
+    var designado  = dados.designado;
+
+    var ss = SpreadsheetApp.openById('1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg');
+    var sheet = ss.getSheetByName('dados') || ss.getSheets()[0];
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(['Data de Início', 'Data de Conclusão', 'Território', 'Designado']);
+    }
+
+    sheet.appendRow([inicio, conclusao, territorio, designado]);
+    Logger.log('Linha inserida: ' + [inicio, conclusao, territorio, designado].join(', '));
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: 'success' }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (erro) {
+    Logger.log('Erro no doPost: ' + erro);
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: 'error', message: erro.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ status: 'web app ativo' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
