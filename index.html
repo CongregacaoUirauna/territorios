@@ -1,4 +1,3 @@
-=== index.html ===
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,83 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Designação de Territórios</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f9f9f9;
-    }
-    h1 {
-      color: #2a6b77;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    form {
-      max-width: 600px;
-      margin: 0 auto 30px;
-      padding: 20px;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    form input, form button {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    form button {
-      background-color: #2a6b77;
-      color: #fff;
-      cursor: pointer;
-      border: none;
-    }
-    form button:hover {
-      opacity: 0.9;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      max-width: 800px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    th {
-      background-color: #d68f00;
-      color: #fff;
-    }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f9f9f9; }
+    h1 { color: #2a6b77; text-align: center; margin-bottom: 20px; }
+    form { max-width: 600px; margin: 0 auto 30px; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    form input, form button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    form button { background-color: #2a6b77; color: #fff; cursor: pointer; border: none; }
+    form button:hover { opacity: 0.9; }
+    table { width: 100%; border-collapse: collapse; max-width: 800px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #d68f00; color: #fff; }
   </style>
 </head>
 <body>
-  <h1>Designação de Territórios</h1>
+  <h1>Designação de Territórios1</h1>
 
   <form id="territorioForm">
-    <label>
-      Data de Início:
-      <input type="date" name="inicio" required>
-    </label>
-    <label>
-      Data de Conclusão:
-      <input type="date" name="conclusao" required>
-    </label>
-    <label>
-      Nº do Território:
-      <input type="number" name="territorio" required>
-    </label>
-    <label>
-      Designado:
-      <input type="text" name="designado" required>
-    </label>
+    <label>Data de Início:<input type="date" name="inicio" required></label>
+    <label>Data de Conclusão:<input type="date" name="conclusao" required></label>
+    <label>Nº do Território:<input type="number" name="territorio" required></label>
+    <label>Designado:<input type="text" name="designado" required></label>
     <button type="submit">Salvar</button>
   </form>
 
@@ -129,9 +70,9 @@
         rows.forEach(line => {
           const [inicio, conclusao, territorio, designado] = line.split(',');
           const tr = document.createElement('tr');
-          [inicio, conclusao, territorio, designado].forEach(texto => {
+          [inicio, conclusao, territorio, designado].forEach(txt => {
             const td = document.createElement('td');
-            td.textContent = texto;
+            td.textContent = txt;
             tr.appendChild(td);
           });
           tbody.appendChild(tr);
@@ -145,47 +86,3 @@
   </script>
 </body>
 </html>
-
-=== Code.gs ===
-// Google Apps Script para receber dados via POST e gravar na planilha
-
-function doPost(e) {
-  Logger.log('doPost chamado, payload: ' + JSON.stringify(e));
-  try {
-    if (!e.postData || !e.postData.contents) {
-      throw new Error('Corpo da requisição vazio ou inválido');
-    }
-    var dados = JSON.parse(e.postData.contents);
-    Logger.log('Dados parseados: ' + JSON.stringify(dados));
-    var inicio     = dados.inicio;
-    var conclusao  = dados.conclusao;
-    var territorio  = dados.territorio;
-    var designado  = dados.designado;
-
-    var ss = SpreadsheetApp.openById('1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg');
-    var sheet = ss.getSheetByName('dados') || ss.getSheets()[0];
-
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(['Data de Início', 'Data de Conclusão', 'Território', 'Designado']);
-    }
-
-    sheet.appendRow([inicio, conclusao, territorio, designado]);
-    Logger.log('Linha inserida: ' + [inicio, conclusao, territorio, designado].join(', '));
-
-    return ContentService
-      .createTextOutput(JSON.stringify({ result: 'success' }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } catch (erro) {
-    Logger.log('Erro no doPost: ' + erro);
-    return ContentService
-      .createTextOutput(JSON.stringify({ result: 'error', message: erro.message }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function doGet(e) {
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: 'web app ativo' }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
