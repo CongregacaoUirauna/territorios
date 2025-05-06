@@ -1,101 +1,59 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Designação de Territórios</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f1f1f1;
+      background: #f8f8f8;
       padding: 20px;
     }
-
-    h1 {
-      text-align: center;
-      color: #2a6b77;
+    h2 {
+      color: #0b4c5f;
     }
-
-    form {
-      background-color: #fff;
-      padding: 20px;
-      margin-bottom: 30px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    label {
-      display: block;
-      margin-top: 10px;
-    }
-
-    input[type="text"],
-    input[type="date"] {
-      width: 100%;
+    input, button {
       padding: 10px;
-      margin-top: 5px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      margin: 5px 0;
+      width: 100%;
+      max-width: 400px;
     }
-
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      background-color: #2a6b77;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #1e4c55;
-    }
-
     table {
-      width: 100%;
+      margin-top: 20px;
       border-collapse: collapse;
-      margin-top: 40px;
-      background-color: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 800px;
     }
-
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
     th {
-      background-color: #d68f00;
+      background-color: goldenrod;
       color: white;
-      padding: 10px;
-      text-align: left;
-    }
-
-    td {
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
     }
   </style>
 </head>
 <body>
-  <h1>Designação de Territórios5</h1>
+  <h2>Designação de Territórios6</h2>
 
-  <form id="territorio-form">
-    <label for="inicio">Data de Início:</label>
-    <input type="date" id="inicio" name="inicio" required>
+  <label>Data de Início:</label><br>
+  <input type="date" id="dataInicio"><br>
 
-    <label for="conclusao">Data de Conclusão:</label>
-    <input type="date" id="conclusao" name="conclusao" required>
+  <label>Data de Conclusão:</label><br>
+  <input type="date" id="dataConclusao"><br>
 
-    <label for="territorio">Nº do Território:</label>
-    <input type="text" id="territorio" name="territorio" required>
+  <label>Nº do Território:</label><br>
+  <input type="number" id="territorio"><br>
 
-    <label for="designado">Designado:</label>
-    <input type="text" id="designado" name="designado" required>
+  <label>Designado:</label><br>
+  <input type="text" id="designado"><br>
 
-    <button type="submit">Salvar</button>
-  </form>
+  <button onclick="salvar()">Salvar</button>
 
-  <table id="dados-tabela">
+  <table>
     <thead>
       <tr>
         <th>Data de Início</th>
@@ -104,75 +62,60 @@
         <th>Designado</th>
       </tr>
     </thead>
-    <tbody id="tabela-body">
-      <!-- Dados carregados aqui -->
-    </tbody>
+    <tbody id="tabelaDados"></tbody>
   </table>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycby3b1o-U9KgBTcjz7qcjvvICNi-BcN50iFeBdjk8GQxV3eEyBPxh4uZks1ILdUMJNFKcg/exec';
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBEGdfWIwgwaOO_IYaBoh9A2TYqUdxrU2jdPeV8vfWL_0kCEujgFqOl1wXhwfooNFVPQ/exec";
 
-    const form = document.getElementById('territorio-form');
-    const tabelaBody = document.getElementById('tabela-body');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    function salvar() {
+      const dataInicio = document.getElementById("dataInicio").value;
+      const dataConclusao = document.getElementById("dataConclusao").value;
+      const territorio = document.getElementById("territorio").value;
+      const designado = document.getElementById("designado").value;
 
       const dados = {
-        inicio: document.getElementById('inicio').value,
-        conclusao: document.getElementById('conclusao').value,
-        territorio: document.getElementById('territorio').value,
-        designado: document.getElementById('designado').value
+        dataInicio,
+        dataConclusao,
+        territorio,
+        designado
       };
 
-      try {
-        const resposta = await fetch(scriptURL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(dados)
-        });
-
-        const resultado = await resposta.json();
-        if (resultado.status === 'sucesso') {
-          alert('Dados salvos com sucesso!');
-          form.reset();
-          carregarTabela(); // recarrega os dados
-        } else {
-          alert('Erro ao salvar dados: ' + resultado.mensagem);
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        body: JSON.stringify(dados),
+        headers: {
+          "Content-Type": "application/json"
         }
-      } catch (erro) {
-        console.error('Erro de rede:', erro);
-        alert('Erro ao salvar dados.');
-      }
-    });
-
-    async function carregarTabela() {
-      try {
-        const resposta = await fetch(scriptURL);
-        const dados = await resposta.json();
-
-        tabelaBody.innerHTML = '';
-
-        dados.reverse().forEach(linha => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${linha.inicio}</td>
-            <td>${linha.conclusao}</td>
-            <td>${linha.territorio}</td>
-            <td>${linha.designado}</td>
-          `;
-          tabelaBody.appendChild(tr);
-        });
-      } catch (erro) {
-        console.error('Erro ao carregar tabela:', erro);
-      }
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.status === "sucesso") {
+          alert("Dados salvos com sucesso!");
+          adicionarNaTabela(dados);
+        } else {
+          alert("Erro ao salvar dados.");
+        }
+      })
+      .catch(err => {
+        console.error("Erro:", err);
+        alert("Erro ao salvar dados.");
+      });
     }
 
-    // Carrega a tabela ao abrir a página
-    carregarTabela();
+    function adicionarNaTabela(dados) {
+      const tabela = document.getElementById("tabelaDados");
+      const linha = document.createElement("tr");
+
+      linha.innerHTML = `
+        <td>${dados.dataInicio}</td>
+        <td>${dados.dataConclusao}</td>
+        <td>${dados.territorio}</td>
+        <td>${dados.designado}</td>
+      `;
+
+      tabela.appendChild(linha);
+    }
   </script>
 </body>
 </html>
