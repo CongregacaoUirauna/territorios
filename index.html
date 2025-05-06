@@ -77,7 +77,7 @@
   </style>
 </head>
 <body>
-  <h1>Designação de Territórios4</h1>
+  <h1>Designação de Territórios5</h1>
 
   <form id="territorio-form">
     <label for="inicio">Data de Início:</label>
@@ -110,7 +110,7 @@
   </table>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycby2RtId6sREWbmyuIGdL1Dw0v4vSB4tKoh9-JmiZff-o08Zgc2ErJ38hkIOvNWhs_7o6A/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycby3b1o-U9KgBTcjz7qcjvvICNi-BcN50iFeBdjk8GQxV3eEyBPxh4uZks1ILdUMJNFKcg/exec';
 
     const form = document.getElementById('territorio-form');
     const tabelaBody = document.getElementById('tabela-body');
@@ -141,7 +141,7 @@
           form.reset();
           carregarTabela(); // recarrega os dados
         } else {
-          alert('Erro ao salvar dados.');
+          alert('Erro ao salvar dados: ' + resultado.mensagem);
         }
       } catch (erro) {
         console.error('Erro de rede:', erro);
