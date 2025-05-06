@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Designação de Territórios</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    h1 {
+      color: #2a6b77;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    form {
+      max-width: 600px;
+      margin: 0 auto 30px;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    form input, form button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    form button {
+      background-color: #2a6b77;
+      color: #fff;
+      cursor: pointer;
+      border: none;
+    }
+    form button:hover {
+      opacity: 0.9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #d68f00;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Designação de Territórios</h1>
+
+  <form id="territorioForm">
+    <label>
+      Data de Início:
+      <input type="date" name="inicio" required>
+    </label>
+    <label>
+      Data de Conclusão:
+      <input type="date" name="conclusao" required>
+    </label>
+    <label>
+      Nº do Território:
+      <input type="number" name="territorio" required>
+    </label>
+    <label>
+      Designado:
+      <input type="text" name="designado" required>
+    </label>
+    <button type="submit">Salvar</button>
+  </form>
+
+  <table id="tabela">
+    <thead>
+      <tr>
+        <th>Data de Início</th>
+        <th>Data de Conclusão</th>
+        <th>Território</th>
+        <th>Designado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Linhas geradas dinamicamente -->
+    </tbody>
+  </table>
+
+  <script>
+    // Substitua pelas suas URLs:
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxrVx8pFlYPBUFOJlZhUhdyDb5ghJNeBky5jux56GH-VqLsAo2yMyqv3zHwjrDv6NpoSw/exec';
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg/export?format=csv&sheet=dados';
+
+    document.getElementById('territorioForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        e.target.reset();
+        carregarTabela();
+      } catch (err) {
+        console.error('Erro ao salvar:', err);
+      }
+    });
+
+    async function carregarTabela() {
+      try {
+        const res = await fetch(SHEET_CSV_URL);
+        const text = await res.text();
+        const rows = text.trim().split('\n').slice(1);
+        const tbody = document.querySelector('#tabela tbody');
+        tbody.innerHTML = '';
+        rows.forEach(line => {
+          const [inicio, conclusao, territorio, designado] = line.split(',');
+          const tr = document.createElement('tr');
+          [inicio, conclusao, territorio, designado].forEach(texto => {
+            const td = document.createElement('td');
+            td.textContent = texto;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Erro ao carregar tabela:', err);
+      }
+    }
+
+    // Carrega ao iniciar
+    carregarTabela();
+  </script>
+</body>
+</html>
