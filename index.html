@@ -17,7 +17,7 @@
   </style>
 </head>
 <body>
-  <h1>Designação de Territórios1</h1>
+  <h1>Designação de Territórios2</h1>
 
   <form id="territorioForm">
     <label>Data de Início:<input type="date" name="inicio" required></label>
@@ -41,22 +41,23 @@
 
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxqAHoD9a1R3b8snsUBz7GHmrN_TUYPWvWMpZRPHlIvLW48xxXMNP8JZi1vbl6ErgfPUg/exec';
-    const SHEET_CSV_URL =
-      'https://docs.google.com/spreadsheets/d/1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg/export?format=csv&sheet=dados';
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1w42XGnQkqNTs7BBT6aMMyueS3b-MdVjiEDO1ImDiSWg/export?format=csv&sheet=dados';
 
     document.getElementById('territorioForm').addEventListener('submit', async e => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target));
       try {
-        await fetch(WEB_APP_URL, {
+        const res = await fetch(WEB_APP_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         });
+        const json = await res.json();
+        alert('Resposta do servidor: ' + JSON.stringify(json));
         e.target.reset();
         carregarTabela();
       } catch (err) {
-        console.error('Erro ao salvar:', err);
+        alert('Erro de rede: ' + err);
       }
     });
 
