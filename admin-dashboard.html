@@ -27,10 +27,11 @@
         <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h2 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">⚙️ Regras Inteligentes do Sistema</h2>
             <div class="space-y-4">
+                
                 <div class="flex items-center justify-between bg-gray-50 p-4 rounded border border-gray-100 transition hover:bg-gray-100">
                     <div>
                         <h3 class="font-semibold text-gray-800">Sugestão Automática de Territórios</h3>
-                        <p class="text-sm text-gray-500">Quando ativo, sugere mapas mais antigos ou nunca trabalhados.</p>
+                        <p class="text-sm text-gray-500">Quando ativo, o sistema sugere os territórios mais antigos ou parados para os publicadores.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="toggleSugestoes" class="sr-only peer">
@@ -40,86 +41,97 @@
 
                 <div class="flex items-center justify-between bg-gray-50 p-4 rounded border border-gray-100 transition hover:bg-gray-100">
                     <div>
-                        <h3 class="font-semibold text-gray-800">Varredura Completa</h3>
-                        <p class="text-sm text-gray-500">Bloqueia a seleção de mapas já concluídos nesta rodada.</p>
+                        <h3 class="font-semibold text-gray-800">Varredura Completa (Bloquear Repetidos)</h3>
+                        <p class="text-sm text-gray-500">Exige que os responsáveis escolham apenas mapas que ainda não foram trabalhados nesta rodada.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="toggleVarredura" class="sr-only peer">
                         <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                 </div>
+
             </div>
         </section>
 
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-yellow-500">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-lg font-bold text-gray-700 flex items-center gap-2">📢 Gestão de Avisos e Campo</h2>
-            </div>
-
-            <form id="formAviso" class="bg-gray-50 p-5 rounded-lg border border-gray-200 mb-6 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Título do Aviso</label>
-                        <input type="text" id="tituloAviso" placeholder="Ex: Programação de Campo da Semana" required class="w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm">
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-lg font-bold text-gray-700 mb-6 flex items-center gap-2">📢 Mural de Avisos e Programação de Campo</h2>
+            
+            <form id="formAviso" class="bg-blue-50/50 p-5 rounded-lg border border-blue-100 space-y-5 mb-8 shadow-inner">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Tipo de Publicação</label>
+                        <select id="avisoTipo" class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white">
+                            <option value="texto">Aviso Comum (Texto)</option>
+                            <option value="programacao">Tabela Estruturada (Campo/Testemunho)</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Público Alvo</label>
-                        <select id="publicoAviso" class="w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm">
-                            <option value="todos">Todos (Geral)</option>
-                            <option value="responsavel">Apenas Responsáveis</option>
-                            <option value="publicador">Apenas Publicadores</option>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Público Alvo (Quem pode ver?)</label>
+                        <select id="avisoPublico" class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white">
+                            <option value="todos">Todos na Congregação</option>
+                            <option value="responsaveis">Apenas Responsáveis</option>
+                            <option value="publicadores">Apenas Publicadores Comuns</option>
+                            <option value="especificos">Pessoas Específicas</option>
                         </select>
                     </div>
                 </div>
 
+                <div id="containerEmails" class="hidden">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">E-mails Autorizados (separados por vírgula)</label>
+                    <input type="text" id="avisoEmails" placeholder="exemplo1@gmail.com, exemplo2@gmail.com" class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Conteúdo</label>
-                    <div class="flex gap-4">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="tipoAviso" value="texto" checked class="text-yellow-600 focus:ring-yellow-500">
-                            <span class="ml-2 text-sm text-gray-700">Aviso em Texto</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="tipoAviso" value="programacao" class="text-yellow-600 focus:ring-yellow-500">
-                            <span class="ml-2 text-sm text-gray-700">Tabela de Campo</span>
-                        </label>
-                    </div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Título Principal</label>
+                    <input type="text" id="avisoTitulo" required placeholder="Ex: Programação da Semana ou Visita do Superintendente" class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                 </div>
 
-                <div id="areaTextoAviso" class="block">
-                    <textarea id="conteudoTextoAviso" rows="3" placeholder="Digite os detalhes do anúncio aqui..." class="w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm"></textarea>
+                <div id="painelAvisoTexto">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Conteúdo da Mensagem</label>
+                    <textarea id="avisoConteudo" rows="4" placeholder="Escreva o aviso aqui..." class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
                 </div>
 
-                <div id="areaTabelaAviso" class="hidden space-y-3 bg-white p-4 border border-gray-200 rounded-md">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-bold text-gray-600">Dias de Campo / Testemunho</span>
-                        <button type="button" id="btnAdicionarLinha" class="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded font-bold transition">+ Adicionar Dia</button>
-                    </div>
-                    <div id="containerLinhasProgramacao" class="space-y-2">
+                <div id="painelAvisoTabela" class="hidden bg-white p-4 rounded border border-gray-200 shadow-sm">
+                    <label class="block text-sm font-bold text-gray-800 mb-3 border-b pb-2">Adicionar Linhas na Tabela de Programação</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end mb-4">
+                        <div>
+                            <span class="text-xs text-gray-500 font-bold">Dia da Semana</span>
+                            <input type="text" id="tabelaDia" placeholder="Ex: Sábado" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
                         </div>
+                        <div>
+                            <span class="text-xs text-gray-500 font-bold">Horário</span>
+                            <input type="time" id="tabelaHora" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 font-bold">Local</span>
+                            <input type="text" id="tabelaLocal" placeholder="Ex: Salão / Praça" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 font-bold">Dirigente</span>
+                            <input type="text" id="tabelaDirigente" placeholder="Nome do Irmão" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+                        </div>
+                        <button type="button" id="btnAddLinha" class="bg-gray-800 hover:bg-black text-white px-3 py-2 rounded-md font-bold text-sm transition h-[38px]">
+                            + Adicionar
+                        </button>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded border border-gray-200 p-3 min-h-[80px]">
+                        <ul id="listaLinhasVisuais" class="space-y-2 text-sm">
+                            <li class="text-gray-400 italic text-center" id="textoSemLinhas">Nenhuma linha adicionada ainda.</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="flex justify-end pt-2">
-                    <button type="submit" id="btnSalvarAviso" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-md text-sm font-bold transition shadow-sm">
-                        Publicar Aviso
+                    <button type="submit" id="btnPublicarAviso" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-md text-sm font-bold transition shadow-md">
+                        🚀 Publicar no Mural
                     </button>
                 </div>
             </form>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Público</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaAvisos" class="bg-white divide-y divide-gray-200">
-                        <tr><td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">Carregando avisos...</td></tr>
-                    </tbody>
-                </table>
+            <h3 class="font-bold text-gray-700 border-b pb-2 mb-4">Avisos e Programações Ativas</h3>
+            <div id="gridAvisosAtivos" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <p class="text-gray-500 text-sm italic col-span-full">Carregando mural...</p>
             </div>
         </section>
 
@@ -140,28 +152,30 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Território</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsável</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Última Nota</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mapa</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Território</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsável</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Nota</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mapa</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tabelaTerritorios" class="bg-white divide-y divide-gray-200">
-                        <tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Carregando dados...</td></tr>
+                        <tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Carregando dados do banco...</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
         <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h2 class="text-lg font-bold text-gray-700 flex items-center gap-2 mb-6">👥 Gestão da Equipe (Autorizações)</h2>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-gray-700 flex items-center gap-2">👥 Gestão da Equipe (Autorizações)</h2>
+            </div>
 
             <form id="formAutorizacao" class="flex flex-col sm:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded border border-gray-100">
                 <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">E-mail do Irmão</label>
-                    <input type="email" id="emailAutorizado" required class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <input type="email" id="emailAutorizado" placeholder="exemplo@gmail.com" required class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                 </div>
                 <div class="w-full sm:w-48">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Papel / Acesso</label>
@@ -173,7 +187,7 @@
                 </div>
                 <div class="flex items-end">
                     <button type="submit" id="btnSalvarAutorizacao" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-md text-sm font-bold transition shadow-sm">
-                        Autorizar
+                        Autorizar Acesso
                     </button>
                 </div>
             </form>
@@ -182,13 +196,13 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail Autorizado</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Papel</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-mail Autorizado</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Papel</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tabelaAutorizacoes" class="bg-white divide-y divide-gray-200">
-                        <tr><td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">Carregando...</td></tr>
+                        <tr><td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">Carregando autorizações...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -196,65 +210,72 @@
         
         <div id="modalTerritorio" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
             <div class="relative p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
-                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Novo Território</h3>
-                <form id="formTerritorio" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Número</label>
-                        <input type="text" id="numTerritorio" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nome ou Descrição</label>
-                        <input type="text" id="nomeTerritorio" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Link My Maps</label>
-                        <input type="url" id="linkMapaTerritorio" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5">
-                    </div>
-                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                        <button type="button" id="btnFecharModal" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium">Cancelar</button>
-                        <button type="submit" id="btnSalvarTerritorio" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold">Salvar</button>
-                    </div>
-                </form>
+                <div class="mt-3">
+                    <h3 class="text-lg leading-6 font-bold text-gray-900 mb-4 border-b pb-2">Cadastrar Novo Território</h3>
+                    <form id="formTerritorio" class="text-left space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Número do Território</label>
+                            <input type="text" id="numTerritorio" placeholder="Ex: 01, 02, 15..." required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome ou Descrição</label>
+                            <input type="text" id="nomeTerritorio" placeholder="Ex: Centro - Setor Comercial" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Link do Google My Maps</label>
+                            <input type="url" id="linkMapaTerritorio" placeholder="Cole o link de compartilhamento do My Maps" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <p class="text-xs text-gray-500 mt-1 text-blue-600">Dica: Use o link de "Visualização" do My Maps gerado no botão compartilhar.</p>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                            <button type="button" id="btnFecharModal" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium transition">Cancelar</button>
+                            <button type="submit" id="btnSalvarTerritorio" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition shadow-sm">Salvar no Firestore</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
         <div id="modalEditar" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
             <div class="relative p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
-                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Editar Território <span id="editNumTerritorioText" class="text-blue-600"></span></h3>
-                <form id="formEditar" class="space-y-4">
-                    <input type="hidden" id="editIdDoc">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nome ou Descrição</label>
-                        <input type="text" id="editNomeTerritorio" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Link My Maps</label>
-                        <input type="url" id="editLinkMapa" class="mt-1 block w-full border border-gray-300 rounded-md p-2.5">
-                    </div>
-                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                        <button type="button" onclick="window.fecharEditar()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">Cancelar</button>
-                        <button type="submit" id="btnSalvarEdicao" class="px-4 py-2 bg-orange-500 text-white rounded-md font-bold">Salvar</button>
-                    </div>
-                </form>
+                <div class="mt-3">
+                    <h3 class="text-lg leading-6 font-bold text-gray-900 mb-4 border-b pb-2">Editar Território <span id="editNumTerritorioText" class="text-blue-600"></span></h3>
+                    <form id="formEditar" class="text-left space-y-4">
+                        <input type="hidden" id="editIdDoc">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome ou Descrição</label>
+                            <input type="text" id="editNomeTerritorio" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Link do Google My Maps</label>
+                            <input type="url" id="editLinkMapa" placeholder="Cole o link aqui..." class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                            <button type="button" onclick="window.fecharEditar()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium transition">Cancelar</button>
+                            <button type="submit" id="btnSalvarEdicao" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 font-bold transition shadow-sm">Salvar Alterações</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
         <div id="modalDesignar" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
             <div class="relative p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
-                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Designar Território <span id="designarNumText" class="text-indigo-600"></span></h3>
-                <form id="formDesignar" class="space-y-4">
-                    <input type="hidden" id="designarIdDoc">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
-                        <select id="selectResponsavel" required class="block w-full border border-gray-300 rounded-md p-2.5">
-                            <option value="">Carregando...</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                        <button type="button" onclick="window.fecharDesignar()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">Cancelar</button>
-                        <button type="submit" id="btnSalvarDesignacao" class="px-4 py-2 bg-indigo-600 text-white rounded-md font-bold">Confirmar</button>
-                    </div>
-                </form>
+                <div class="mt-3">
+                    <h3 class="text-lg leading-6 font-bold text-gray-900 mb-4 border-b pb-2">Designar Território <span id="designarNumText" class="text-indigo-600"></span></h3>
+                    <form id="formDesignar" class="text-left space-y-4">
+                        <input type="hidden" id="designarIdDoc">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Selecione o Responsável</label>
+                            <select id="selectResponsavel" required class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <option value="">Carregando irmãos...</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                            <button type="button" onclick="window.fecharDesignar()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium transition">Cancelar</button>
+                            <button type="submit" id="btnSalvarDesignacao" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-bold transition shadow-sm">Confirmar Designação</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </main>
@@ -262,7 +283,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // Importação ATUALIZADA com addDoc
+        import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
@@ -277,115 +299,186 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // Referências DOM - Gerais
+        const tabelaTerritorios = document.getElementById('tabelaTerritorios');
         const userEmailDisplay = document.getElementById('userEmailDisplay');
         const btnLogout = document.getElementById('btnLogout');
+        
+        // Referências DOM - Modais
+        const modal = document.getElementById('modalTerritorio');
+        const btnNovo = document.getElementById('btnNovoTerritorio');
+        const btnFechar = document.getElementById('btnFecharModal');
+        const form = document.getElementById('formTerritorio');
 
-        // 1. Guardião de Rota
+        // Referências DOM - Regras
+        const toggleSugestoes = document.getElementById('toggleSugestoes');
+        const toggleVarredura = document.getElementById('toggleVarredura');
+
+        // 1. Guardião e Inicializadores
         onAuthStateChanged(auth, (user) => {
-            if (!user) { window.location.href = "login.html"; } 
-            else {
+            if (!user) {
+                window.location.href = "login.html"; 
+            } else {
                 userEmailDisplay.textContent = user.email;
                 userEmailDisplay.classList.remove('hidden');
                 iniciarEscutaDeRegras();
                 iniciarEscutaDeTerritorios();
                 iniciarEscutaDeAutorizacoes();
-                iniciarEscutaDeAvisos(); // Nova Função Inicializada
+                iniciarEscutaDeAvisos(); // Novo Módulo
             }
         });
 
-        btnLogout.addEventListener('click', () => signOut(auth).then(() => window.location.href = "login.html"));
-
-        // ==========================================
-        // MÓDULO: GESTÃO DE AVISOS E PROGRAMAÇÕES
-        // ==========================================
-        const radiosTipoAviso = document.getElementsByName('tipoAviso');
-        const areaTextoAviso = document.getElementById('areaTextoAviso');
-        const areaTabelaAviso = document.getElementById('areaTabelaAviso');
-        const containerLinhas = document.getElementById('containerLinhasProgramacao');
-        const formAviso = document.getElementById('formAviso');
-        const tabelaAvisos = document.getElementById('tabelaAvisos');
-
-        // Alternar visualização (Texto vs Tabela)
-        radiosTipoAviso.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.value === 'texto') {
-                    areaTextoAviso.classList.remove('hidden');
-                    areaTabelaAviso.classList.add('hidden');
-                } else {
-                    areaTextoAviso.classList.add('hidden');
-                    areaTabelaAviso.classList.remove('hidden');
-                    if(containerLinhas.children.length === 0) adicionarLinhaProgramacao(); // Add 1ª linha vazia
-                }
-            });
+        btnLogout.addEventListener('click', () => {
+            signOut(auth).then(() => { window.location.href = "login.html"; });
         });
 
-        // Função para injetar uma linha de dados da tabela de campo
-        function adicionarLinhaProgramacao() {
-            const idLinha = Date.now();
-            const div = document.createElement('div');
-            div.className = "flex flex-col sm:flex-row gap-2 items-center bg-gray-50 p-2 border border-gray-200 rounded";
-            div.innerHTML = `
-                <input type="text" placeholder="Dia (Ex: Sab 09:00)" class="w-full sm:w-1/4 border-gray-300 rounded p-1.5 text-sm input-dia">
-                <input type="text" placeholder="Local de Saída" class="w-full sm:w-2/4 border-gray-300 rounded p-1.5 text-sm input-local">
-                <input type="text" placeholder="Dirigente" class="w-full sm:w-1/4 border-gray-300 rounded p-1.5 text-sm input-dirigente">
-                <button type="button" onclick="this.parentElement.remove()" class="text-red-500 font-bold hover:bg-red-50 px-2 rounded">X</button>
-            `;
-            containerLinhas.appendChild(div);
+        // ------------------------------------------------------------------
+        // NOVO MÓDULO: GESTÃO DE AVISOS E PROGRAMAÇÕES
+        // ------------------------------------------------------------------
+        const avisoTipo = document.getElementById('avisoTipo');
+        const avisoPublico = document.getElementById('avisoPublico');
+        const containerEmails = document.getElementById('containerEmails');
+        const painelAvisoTexto = document.getElementById('painelAvisoTexto');
+        const painelAvisoTabela = document.getElementById('painelAvisoTabela');
+        
+        // Controle de exibição (Texto vs Tabela)
+        avisoTipo.addEventListener('change', (e) => {
+            if (e.target.value === 'texto') {
+                painelAvisoTexto.classList.remove('hidden');
+                painelAvisoTabela.classList.add('hidden');
+            } else {
+                painelAvisoTexto.classList.add('hidden');
+                painelAvisoTabela.classList.remove('hidden');
+            }
+        });
+
+        // Controle de exibição (Input de e-mails específicos)
+        avisoPublico.addEventListener('change', (e) => {
+            if (e.target.value === 'especificos') {
+                containerEmails.classList.remove('hidden');
+            } else {
+                containerEmails.classList.add('hidden');
+            }
+        });
+
+        // Construtor da Tabela em Memória
+        let linhasProgramacaoMemoria = [];
+        const btnAddLinha = document.getElementById('btnAddLinha');
+        const listaLinhasVisuais = document.getElementById('listaLinhasVisuais');
+        const textoSemLinhas = document.getElementById('textoSemLinhas');
+
+        function atualizarUIListaProg() {
+            listaLinhasVisuais.innerHTML = '';
+            if (linhasProgramacaoMemoria.length === 0) {
+                listaLinhasVisuais.innerHTML = '<li class="text-gray-400 italic text-center text-sm py-2">Nenhuma linha adicionada ainda.</li>';
+                return;
+            }
+            linhasProgramacaoMemoria.forEach((linha, index) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-white p-2 border border-gray-200 rounded text-xs shadow-sm";
+                li.innerHTML = `
+                    <span class="font-medium text-gray-700">
+                        <span class="text-blue-600 font-bold">${linha.dia} (${linha.hora})</span> - ${linha.local} | Dir: ${linha.dirigente}
+                    </span>
+                    <button type="button" class="text-red-500 hover:text-red-700 font-bold px-2" onclick="window.removerLinhaMemoria(${index})">X</button>
+                `;
+                listaLinhasVisuais.appendChild(li);
+            });
         }
 
-        document.getElementById('btnAdicionarLinha').addEventListener('click', adicionarLinhaProgramacao);
+        window.removerLinhaMemoria = (index) => {
+            linhasProgramacaoMemoria.splice(index, 1);
+            atualizarUIListaProg();
+        };
 
-        // Salvar Anúncio no Firestore
-        formAviso.addEventListener('submit', async (e) => {
+        btnAddLinha.addEventListener('click', () => {
+            const dia = document.getElementById('tabelaDia').value.trim();
+            const hora = document.getElementById('tabelaHora').value.trim();
+            const local = document.getElementById('tabelaLocal').value.trim();
+            const dirigente = document.getElementById('tabelaDirigente').value.trim();
+
+            if (!dia || !local || !dirigente) {
+                alert("Preencha ao menos Dia, Local e Dirigente.");
+                return;
+            }
+
+            linhasProgramacaoMemoria.push({ dia, hora, local, dirigente });
+            atualizarUIListaProg();
+
+            // Limpa os inputs para a próxima linha
+            document.getElementById('tabelaDia').value = '';
+            document.getElementById('tabelaHora').value = '';
+            document.getElementById('tabelaLocal').value = '';
+            document.getElementById('tabelaDirigente').value = '';
+        });
+
+        // Salvar Aviso no Firestore
+        document.getElementById('formAviso').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btnSalvarAviso');
+            const btn = document.getElementById('btnPublicarAviso');
             btn.innerText = "Publicando..."; btn.disabled = true;
 
-            const titulo = document.getElementById('tituloAviso').value.trim();
-            const publico = document.getElementById('publicoAviso').value;
-            const tipo = document.querySelector('input[name="tipoAviso"]:checked').value;
+            const tipo = avisoTipo.value;
+            const publico = avisoPublico.value;
+            const titulo = document.getElementById('avisoTitulo').value.trim();
             
-            let dadosAviso = {
+            // Tratamento de e-mails específicos
+            let emailsArray = [];
+            if (publico === 'especificos') {
+                const emailsRaw = document.getElementById('avisoEmails').value;
+                emailsArray = emailsRaw.split(',').map(e => e.trim().toLowerCase()).filter(e => e !== "");
+                if (emailsArray.length === 0) {
+                    alert("Você escolheu 'Pessoas Específicas' mas não digitou nenhum e-mail.");
+                    btn.innerText = "🚀 Publicar no Mural"; btn.disabled = false;
+                    return;
+                }
+            }
+
+            // Construção do Payload (Documento)
+            const payload = {
+                tipo: tipo,
                 titulo: titulo,
                 publicoAlvo: publico,
-                tipo: tipo,
-                criadoEm: serverTimestamp()
+                pessoasEspecificas: emailsArray,
+                criadoEm: new Date().toISOString()
             };
 
             if (tipo === 'texto') {
-                dadosAviso.conteudo = document.getElementById('conteudoTextoAviso').value.trim();
+                payload.conteudo = document.getElementById('avisoConteudo').value.trim();
             } else {
-                // Coleta todas as linhas dinâmicas
-                let programacaoArray = [];
-                containerLinhas.querySelectorAll('div.flex').forEach(linha => {
-                    programacaoArray.push({
-                        diaHora: linha.querySelector('.input-dia').value.trim(),
-                        local: linha.querySelector('.input-local').value.trim(),
-                        dirigente: linha.querySelector('.input-dirigente').value.trim()
-                    });
-                });
-                dadosAviso.programacao = programacaoArray;
+                if (linhasProgramacaoMemoria.length === 0) {
+                    alert("Adicione pelo menos uma linha na tabela de programação.");
+                    btn.innerText = "🚀 Publicar no Mural"; btn.disabled = false;
+                    return;
+                }
+                payload.conteudo = linhasProgramacaoMemoria;
             }
 
             try {
-                await addDoc(collection(db, "anuncios"), dadosAviso);
-                formAviso.reset();
-                containerLinhas.innerHTML = ''; // Limpa as linhas
-                document.querySelector('input[value="texto"]').click(); // Volta pro texto padrão
+                await addDoc(collection(db, "anuncios"), payload);
+                
+                // Limpa o formulário
+                document.getElementById('formAviso').reset();
+                linhasProgramacaoMemoria = [];
+                atualizarUIListaProg();
+                alert("Aviso publicado com sucesso!");
             } catch (error) {
-                console.error(error);
-                alert("Erro ao publicar aviso. Verifique permissões.");
+                console.error("Erro ao publicar:", error);
+                alert("Erro de permissão. Você é realmente o Admin?");
             } finally {
-                btn.innerText = "Publicar Aviso"; btn.disabled = false;
+                btn.innerText = "🚀 Publicar no Mural"; btn.disabled = false;
             }
         });
 
-        // Ler Avisos em Tempo Real
+        // Renderizar Avisos Ativos
         function iniciarEscutaDeAvisos() {
+            const gridAvisos = document.getElementById('gridAvisosAtivos');
+            
             onSnapshot(collection(db, "anuncios"), (snapshot) => {
-                tabelaAvisos.innerHTML = '';
+                gridAvisos.innerHTML = '';
+                
                 if (snapshot.empty) {
-                    tabelaAvisos.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum aviso ativo.</td></tr>`;
+                    gridAvisos.innerHTML = `<p class="text-gray-500 text-sm italic col-span-full bg-gray-50 p-4 rounded text-center border border-dashed border-gray-300">Nenhum aviso ativo no mural.</p>`;
                     return;
                 }
 
@@ -393,150 +486,282 @@
                     const a = docSnap.data();
                     const id = docSnap.id;
                     
-                    const badgePublico = a.publicoAlvo === 'todos' ? 'bg-gray-100 text-gray-800' : 
-                                         a.publicoAlvo === 'responsavel' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
-                    
-                    const badgeTipo = a.tipo === 'texto' ? '📝 Texto' : '📅 Tabela';
+                    // Identidade Visual baseada no Público
+                    let badgeColor = "bg-gray-100 text-gray-800";
+                    let publicoText = "Todos";
+                    if (a.publicoAlvo === 'responsaveis') { badgeColor = "bg-blue-100 text-blue-800"; publicoText = "Só Responsáveis"; }
+                    else if (a.publicoAlvo === 'publicadores') { badgeColor = "bg-green-100 text-green-800"; publicoText = "Só Publicadores"; }
+                    else if (a.publicoAlvo === 'especificos') { badgeColor = "bg-purple-100 text-purple-800"; publicoText = "E-mails Específicos"; }
 
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 text-sm font-medium text-gray-900">${a.titulo}</td>
-                        <td class="px-6 py-4 text-sm"><span class="px-2 py-1 text-xs font-semibold rounded-full ${badgePublico}">${a.publicoAlvo.toUpperCase()}</span></td>
-                        <td class="px-6 py-4 text-sm text-gray-500">${badgeTipo}</td>
-                        <td class="px-6 py-4 text-right text-sm font-medium">
-                            <button class="text-red-600 hover:text-red-800 font-bold" onclick="window.excluirAviso('${id}')">Excluir</button>
-                        </td>
+                    // Resumo do Conteúdo
+                    let resumoConteudo = "";
+                    if (a.tipo === 'texto') {
+                        resumoConteudo = `<p class="text-sm text-gray-600 line-clamp-3">${a.conteudo}</p>`;
+                    } else {
+                        resumoConteudo = `<div class="bg-gray-50 p-2 border border-gray-200 rounded text-xs font-mono text-gray-600 text-center">📊 Tabela com ${a.conteudo.length} linhas de programação.</div>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative flex flex-col";
+                    card.innerHTML = `
+                        <div class="mb-2 pr-6">
+                            <span class="text-[10px] font-bold uppercase tracking-wider ${badgeColor} px-2 py-0.5 rounded-full mb-1 inline-block">${publicoText}</span>
+                            <h4 class="font-bold text-gray-800">${a.titulo}</h4>
+                        </div>
+                        <div class="flex-1 mb-4">
+                            ${resumoConteudo}
+                        </div>
+                        <button onclick="window.apagarAviso('${id}')" class="text-red-600 hover:text-red-800 text-xs font-bold border border-red-200 hover:bg-red-50 py-1.5 px-3 rounded transition self-end">
+                            🗑️ Apagar Aviso
+                        </button>
                     `;
-                    tabelaAvisos.appendChild(tr);
+                    gridAvisos.appendChild(card);
                 });
             });
         }
 
-        window.excluirAviso = async (idDoc) => {
-            if(confirm('Apagar este aviso definitivamente?')) {
-                await deleteDoc(doc(db, "anuncios", idDoc));
+        window.apagarAviso = async (idDoc) => {
+            if(confirm("Tem certeza que deseja apagar este aviso do mural de todos?")) {
+                try {
+                    await deleteDoc(doc(db, "anuncios", idDoc));
+                } catch (error) {
+                    alert("Erro ao apagar aviso.");
+                }
             }
         };
 
-
-        // ==========================================
-        // CÓDIGO EXISTENTE (Regras, Territórios, Equipe)
-        // ==========================================
-        
-        // Regras
+        // ------------------------------------------------------------------
+        // REGRAS INTELIGENTES GERAIS
+        // ------------------------------------------------------------------
         function iniciarEscutaDeRegras() {
             const regrasRef = doc(db, "configuracoes", "gerais");
             onSnapshot(regrasRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const dados = docSnap.data();
-                    document.getElementById('toggleSugestoes').checked = dados.sugestaoAutomatica || false;
-                    document.getElementById('toggleVarredura').checked = dados.varreduraCompleta || false;
+                    toggleSugestoes.checked = dados.sugestaoAutomatica || false;
+                    toggleVarredura.checked = dados.varreduraCompleta || false;
                 }
             });
-            const salvarRegra = async (campo, valor) => await setDoc(regrasRef, { [campo]: valor }, { merge: true });
-            document.getElementById('toggleSugestoes').addEventListener('change', (e) => salvarRegra('sugestaoAutomatica', e.target.checked));
-            document.getElementById('toggleVarredura').addEventListener('change', (e) => salvarRegra('varreduraCompleta', e.target.checked));
+
+            const salvarRegra = async (campo, valor) => {
+                try {
+                    await setDoc(regrasRef, { [campo]: valor }, { merge: true });
+                } catch (error) {
+                    console.error("Erro ao salvar regra:", error);
+                    alert("Erro de permissão ao salvar configuração.");
+                }
+            };
+
+            toggleSugestoes.addEventListener('change', (e) => salvarRegra('sugestaoAutomatica', e.target.checked));
+            toggleVarredura.addEventListener('change', (e) => salvarRegra('varreduraCompleta', e.target.checked));
         }
 
-        // Modal Territorio
-        const modal = document.getElementById('modalTerritorio');
-        const formT = document.getElementById('formTerritorio');
-        document.getElementById('btnNovoTerritorio').addEventListener('click', () => modal.classList.remove('hidden'));
-        document.getElementById('btnFecharModal').addEventListener('click', () => { modal.classList.add('hidden'); formT.reset(); });
+        // ------------------------------------------------------------------
+        // GESTÃO DE TERRITÓRIOS
+        // ------------------------------------------------------------------
+        btnNovo.addEventListener('click', () => modal.classList.remove('hidden'));
+        btnFechar.addEventListener('click', () => { modal.classList.add('hidden'); form.reset(); });
 
-        formT.addEventListener('submit', async (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btnSalvarTerritorio');
-            btn.innerText = "Salvando..."; btn.disabled = true;
+            const btnSalvar = document.getElementById('btnSalvarTerritorio');
+            const textoOriginal = btnSalvar.innerText;
+            
+            btnSalvar.innerText = "Salvando..."; btnSalvar.disabled = true;
+
             const numero = document.getElementById('numTerritorio').value.trim();
             const nome = document.getElementById('nomeTerritorio').value.trim();
             const linkMapa = document.getElementById('linkMapaTerritorio').value.trim();
+
             try {
                 await setDoc(doc(db, "territorios", `T${numero}`), {
                     numero: numero, nome: nome, mapaUrl: linkMapa, status: "Disponível",
                     responsavelAtual: null, notaPausa: "", ultimaConclusao: null, criadoEm: new Date().toISOString()
                 });
-                modal.classList.add('hidden'); formT.reset();
-            } finally { btn.innerText = "Salvar"; btn.disabled = false; }
+                modal.classList.add('hidden'); form.reset();
+            } catch (error) {
+                alert("Erro ao salvar. Verifique permissões.");
+            } finally {
+                btnSalvar.innerText = textoOriginal; btnSalvar.disabled = false;
+            }
         });
 
-        // Ler Territórios
         function iniciarEscutaDeTerritorios() {
-            onSnapshot(collection(db, "territorios"), (snapshot) => {
-                const tabelaT = document.getElementById('tabelaTerritorios');
-                tabelaT.innerHTML = ''; 
-                if (snapshot.empty) return tabelaT.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">Nenhum cadastrado.</td></tr>`;
+            const territoriosRef = collection(db, "territorios");
+            
+            onSnapshot(territoriosRef, (snapshot) => {
+                tabelaTerritorios.innerHTML = ''; 
+                
+                if (snapshot.empty) {
+                    tabelaTerritorios.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum território cadastrado ainda.</td></tr>`;
+                    return;
+                }
+
                 snapshot.forEach((docSnap) => {
-                    const t = docSnap.data(); const id = docSnap.id;
-                    const linkImg = `https://congregacaouirauna.github.io/territorios/mapas/mapa-${t.numero}.jpg`;
-                    const nota = t.notaPausa ? `<span class="text-gray-700">${t.notaPausa}</span>` : '<span class="text-gray-300 italic text-xs">Sem notas</span>';
-                    const status = t.status === 'Disponível' ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Disponível</span>' : '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Em andamento</span>';
-                    const resp = t.responsavelAtual ? `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">${t.responsavelAtual}</span>` : '<span class="text-gray-400 italic">Nenhum</span>';
-                    const foiConc = t.ultimaConclusao ? 'true' : 'false';
-                    
+                    const t = docSnap.data();
+                    const id = docSnap.id;
+                    const linkMapaGoogle = t.mapaUrl; 
+                    const linkImagemGitHub = `https://congregacaouirauna.github.io/territorios/mapas/mapa-${t.numero}.jpg`;
+
+                    const notaExibida = t.notaPausa ? `<span class="text-gray-700">${t.notaPausa}</span>` : '<span class="text-gray-300 italic text-xs">Sem notas</span>';
+                    const statusBadge = t.status === 'Disponível' ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Disponível</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Em andamento</span>';
+                    const responsavelDisplay = t.responsavelAtual ? `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">${t.responsavelAtual}</span>` : `<span class="text-gray-400 italic">Nenhum</span>`;
+                    const foiConcluido = t.ultimaConclusao ? 'true' : 'false';
+
                     const tr = document.createElement('tr');
-                    tr.className = "hover:bg-gray-50";
+                    tr.classList.add('hover:bg-gray-50', 'transition');
                     tr.innerHTML = `
-                        <td class="px-6 py-4 text-sm font-medium text-gray-900">${t.numero} - ${t.nome}</td>
-                        <td class="px-6 py-4 text-sm">${resp}</td>
-                        <td class="px-6 py-4">${status}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${t.notaPausa || ''}">${nota}</td>
-                        <td class="px-6 py-4 text-sm font-medium"><a href="${t.mapaUrl}" target="_blank" class="text-blue-600">🗺️ Maps</a> <span class="mx-2 text-gray-300">|</span> <a href="${linkImg}" target="_blank" class="text-purple-600">🖼️ Foto</a></td>
-                        <td class="px-6 py-4 text-right text-sm font-medium space-x-3">
-                            <button class="text-indigo-600 font-bold" onclick="window.abrirDesignar('${id}', '${t.numero}', ${foiConc})">Designar</button>
-                            <button class="text-orange-500 font-bold" onclick="window.abrirEditar('${id}', '${t.numero}', '${t.nome}', '${t.mapaUrl || ''}')">Editar</button>
-                            <button class="text-red-600 font-bold" onclick="window.excluirTerritorio('${id}', '${t.numero}')">Excluir</button>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${t.numero} - ${t.nome}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${responsavelDisplay}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title="${t.notaPausa || ''}">${notaExibida}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                            <a href="${linkMapaGoogle}" target="_blank" class="text-blue-600 hover:text-blue-800 transition">🗺️ Maps</a>
+                            <span class="mx-2 text-gray-300">|</span>
+                            <a href="${linkImagemGitHub}" target="_blank" class="text-purple-600 hover:text-purple-800 transition">🖼️ Foto</a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                            <button class="text-indigo-600 hover:text-indigo-900 transition font-bold" onclick="window.abrirDesignar('${id}', '${t.numero}', ${foiConcluido})">Designar</button>
+                            <button class="text-orange-500 hover:text-orange-700 transition font-bold" onclick="window.abrirEditar('${id}', '${t.numero}', '${t.nome}', '${t.mapaUrl || ''}')">Editar</button>
+                            <button class="text-red-600 hover:text-red-800 transition font-bold" onclick="window.excluirTerritorio('${id}', '${t.numero}')">Excluir</button>
                         </td>
                     `;
-                    tabelaT.appendChild(tr);
+                    tabelaTerritorios.appendChild(tr);
                 });
+            }, (error) => {
+                tabelaTerritorios.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-red-500 font-bold">Erro de leitura.</td></tr>`;
             });
         }
 
-        // Ações Territorios
-        window.excluirTerritorio = async (id, num) => { if(confirm(`Excluir o Território ${num}?`)) await deleteDoc(doc(db, "territorios", id)); };
-        window.abrirEditar = (id, num, nome, url) => { document.getElementById('editIdDoc').value=id; document.getElementById('editNumTerritorioText').innerText=num; document.getElementById('editNomeTerritorio').value=nome; document.getElementById('editLinkMapa').value=url==='undefined'?'':url; document.getElementById('modalEditar').classList.remove('hidden'); };
-        window.fecharEditar = () => document.getElementById('modalEditar').classList.add('hidden');
-        document.getElementById('formEditar').addEventListener('submit', async(e)=>{ e.preventDefault(); const id=document.getElementById('editIdDoc').value; await updateDoc(doc(db,"territorios",id),{nome:document.getElementById('editNomeTerritorio').value, mapaUrl:document.getElementById('editLinkMapa').value}); window.fecharEditar(); });
-        
-        window.abrirDesignar = async (id, num, foiConc) => {
-            if(document.getElementById('toggleVarredura').checked && foiConc) return alert("Trava de Varredura ativa! Escolha um mapa não trabalhado.");
-            document.getElementById('designarIdDoc').value=id; document.getElementById('designarNumText').innerText=num; document.getElementById('modalDesignar').classList.remove('hidden');
-            const s = document.getElementById('selectResponsavel'); s.innerHTML = '<option value="">Buscando irmãos...</option>';
-            const q = query(collection(db, "usuarios"), where("papel", "==", "responsavel"));
-            const snaps = await getDocs(q); s.innerHTML = '<option value="" disabled selected>Escolha...</option>';
-            snaps.forEach(d => s.innerHTML += `<option value="${d.data().email}">${d.data().email}</option>`);
-        };
-        window.fecharDesignar = () => document.getElementById('modalDesignar').classList.add('hidden');
-        document.getElementById('formDesignar').addEventListener('submit', async(e)=>{ e.preventDefault(); const id=document.getElementById('designarIdDoc').value; await updateDoc(doc(db,"territorios",id),{status:"Em andamento", responsavelAtual:document.getElementById('selectResponsavel').value}); window.fecharDesignar(); });
-
-        // Exportar CSV
         document.getElementById('btnExportarCSV').addEventListener('click', async () => {
-            const btn = document.getElementById('btnExportarCSV'); btn.innerHTML='⏳ Gerando...'; btn.disabled=true;
-            try{
-                const snaps = await getDocs(collection(db, "territorios"));
-                let csv = "Numero,Nome,Status,Responsavel,Ultima Nota\n";
-                snaps.forEach(d => { const t=d.data(); csv += `${t.numero||''},${(t.nome||'').replace(/,/g,'')},${t.status||''},${t.responsavelAtual||'Nenhum'},${(t.notaPausa||'').replace(/,/g,' ').replace(/\n/g,' ')}\n`; });
-                const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`auditoria_${new Date().toISOString().split('T')[0]}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            } finally { btn.innerHTML='📄 Exportar CSV'; btn.disabled=false; }
+            try {
+                const btn = document.getElementById('btnExportarCSV');
+                btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
+
+                const querySnapshot = await getDocs(collection(db, "territorios"));
+                let csvContent = "Numero,Nome,Status,Responsavel,Ultima Nota\n";
+                
+                querySnapshot.forEach((doc) => {
+                    const t = doc.data();
+                    const numero = t.numero || '';
+                    const nome = (t.nome || '').replace(/,/g, ''); 
+                    const status = t.status || '';
+                    const responsavel = t.responsavelAtual || 'Nenhum';
+                    const nota = (t.notaPausa || '').replace(/,/g, ' ').replace(/\n/g, ' ');
+                    csvContent += `${numero},${nome},${status},${responsavel},${nota}\n`;
+                });
+
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `auditoria_territorios_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            } catch (error) {
+                alert("Erro ao gerar o CSV.");
+            } finally {
+                const btn = document.getElementById('btnExportarCSV');
+                btn.innerHTML = '📄 Exportar CSV'; btn.disabled = false;
+            }
         });
 
-        // Equipe
-        function iniciarEscutaDeAutorizacoes() {
-            onSnapshot(collection(db, "autorizacoes"), (snap) => {
-                const tab = document.getElementById('tabelaAutorizacoes'); tab.innerHTML='';
-                if(snap.empty) return tab.innerHTML=`<tr><td colspan="3" class="text-center py-4">Nenhum autorizado.</td></tr>`;
-                snap.forEach(d => {
-                    const p = d.data().papel; const email = d.id;
-                    const badge = p==='admin'?'bg-purple-100 text-purple-800':p==='responsavel'?'bg-blue-100 text-blue-800':'bg-gray-100 text-gray-800';
-                    const tr = document.createElement('tr'); tr.innerHTML=`<td class="px-6 py-4 font-medium">${email}</td><td class="px-6 py-4"><span class="px-2 py-1 text-xs rounded-full ${badge}">${p}</span></td><td class="px-6 py-4 text-right"><button class="text-red-600 font-bold" onclick="window.removerAuth('${email}')">Remover</button></td>`;
-                    tab.appendChild(tr);
+        window.excluirTerritorio = async (idDoc, numero) => {
+            if(confirm(`Tem certeza que deseja excluir o Território ${numero}?`)) {
+                await deleteDoc(doc(db, "territorios", idDoc));
+            }
+        };
+
+        window.abrirEditar = (idDoc, numero, nome, mapaUrl) => {
+            document.getElementById('editIdDoc').value = idDoc;
+            document.getElementById('editNumTerritorioText').innerText = numero;
+            document.getElementById('editNomeTerritorio').value = nome;
+            document.getElementById('editLinkMapa').value = mapaUrl === 'undefined' ? '' : mapaUrl;
+            document.getElementById('modalEditar').classList.remove('hidden');
+        };
+        window.fecharEditar = () => document.getElementById('modalEditar').classList.add('hidden');
+
+        document.getElementById('formEditar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSalvarEdicao'); btn.innerText = "Salvando..."; btn.disabled = true;
+            try {
+                await updateDoc(doc(db, "territorios", document.getElementById('editIdDoc').value), {
+                    nome: document.getElementById('editNomeTerritorio').value,
+                    mapaUrl: document.getElementById('editLinkMapa').value
+                });
+                window.fecharEditar();
+            } catch (error) { alert("Erro ao editar território."); } 
+            finally { btn.innerText = "Salvar Alterações"; btn.disabled = false; }
+        });
+
+        window.abrirDesignar = async (idDoc, numero, foiConcluido) => {
+            if (document.getElementById('toggleVarredura').checked && foiConcluido) {
+                alert("🛑 A Varredura Completa está ATIVA! Escolha um mapa não trabalhado."); return; 
+            }
+            document.getElementById('designarIdDoc').value = idDoc;
+            document.getElementById('designarNumText').innerText = numero;
+            document.getElementById('modalDesignar').classList.remove('hidden');
+            const select = document.getElementById('selectResponsavel');
+            select.innerHTML = '<option value="">Buscando irmãos...</option>';
+            try {
+                const q = query(collection(db, "usuarios"), where("papel", "==", "responsavel"));
+                const querySnapshot = await getDocs(q);
+                select.innerHTML = '<option value="" disabled selected>Escolha o irmão...</option>';
+                querySnapshot.forEach((docSnap) => { select.innerHTML += `<option value="${docSnap.data().email}">${docSnap.data().email}</option>`; });
+            } catch (error) { select.innerHTML = '<option value="">Erro ao carregar irmãos</option>'; }
+        };
+        window.fecharDesignar = () => document.getElementById('modalDesignar').classList.add('hidden');
+
+        document.getElementById('formDesignar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSalvarDesignacao'); btn.innerText = "Designando..."; btn.disabled = true;
+            try {
+                await updateDoc(doc(db, "territorios", document.getElementById('designarIdDoc').value), {
+                    status: "Em andamento", responsavelAtual: document.getElementById('selectResponsavel').value
+                });
+                window.fecharDesignar();
+            } catch (error) { alert("Erro ao designar território."); } 
+            finally { btn.innerText = "Confirmar Designação"; btn.disabled = false; }
+        });
+
+        // ------------------------------------------------------------------
+        // GESTÃO DE EQUIPE (SALA DE ESPERA)
+        // ------------------------------------------------------------------
+        const tabelaAutorizacoes = document.getElementById('tabelaAutorizacoes');
+        const formAutorizacao = document.getElementById('formAutorizacao');
+
+        window.iniciarEscutaDeAutorizacoes = function() {
+            onSnapshot(collection(db, "autorizacoes"), (snapshot) => {
+                tabelaAutorizacoes.innerHTML = ''; 
+                if (snapshot.empty) { tabelaAutorizacoes.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum irmão autorizado ainda.</td></tr>`; return; }
+                snapshot.forEach((docSnap) => {
+                    const authData = docSnap.data(); const emailId = docSnap.id; 
+                    let papelBadge = '';
+                    if (authData.papel === 'admin') papelBadge = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>';
+                    else if (authData.papel === 'responsavel') papelBadge = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Responsável</span>';
+                    else papelBadge = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Publicador</span>';
+                    const tr = document.createElement('tr'); tr.classList.add('hover:bg-gray-50', 'transition');
+                    tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${emailId}</td><td class="px-6 py-4 whitespace-nowrap">${papelBadge}</td><td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button class="text-red-600 hover:text-red-800 transition font-bold" onclick="window.removerAutorizacao('${emailId}')">Remover</button></td>`;
+                    tabelaAutorizacoes.appendChild(tr);
                 });
             });
-        }
-        document.getElementById('formAutorizacao').addEventListener('submit', async(e)=>{ e.preventDefault(); const email=document.getElementById('emailAutorizado').value.trim().toLowerCase(); await setDoc(doc(db,"autorizacoes",email),{email:email,papel:document.getElementById('papelAutorizado').value,criadoEm:new Date().toISOString()}); document.getElementById('formAutorizacao').reset(); });
-        window.removerAuth = async (email) => { if(confirm(`Remover acesso de ${email}?`)) await deleteDoc(doc(db,"autorizacoes",email)); };
+        };
 
+        formAutorizacao.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSalvarAutorizacao'); btn.innerText = "Salvando..."; btn.disabled = true;
+            const email = document.getElementById('emailAutorizado').value.trim().toLowerCase();
+            try {
+                await setDoc(doc(db, "autorizacoes", email), { email: email, papel: document.getElementById('papelAutorizado').value, criadoEm: new Date().toISOString() });
+                formAutorizacao.reset();
+            } catch (error) { alert("Erro ao salvar autorização."); } 
+            finally { btn.innerText = "Autorizar Acesso"; btn.disabled = false; }
+        });
+
+        window.removerAutorizacao = async (emailId) => {
+            if(confirm(`Tem certeza que deseja remover o acesso de ${emailId}?`)) {
+                await deleteDoc(doc(db, "autorizacoes", emailId));
+            }
+        };
     </script>
 </body>
 </html>
