@@ -8,17 +8,15 @@
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <nav class="bg-blue-800 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex-shrink-0 font-bold text-lg sm:text-xl flex items-center gap-2">
-                    🗺️ Portal da Congregação
-                </div>
-                <div class="flex items-center gap-4">
-                    <span id="userEmailDisplay" class="text-xs sm:text-sm opacity-80 hidden"></span>
-                    <button id="btnLogout" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-sm font-semibold transition shadow-sm">Sair</button>
-                </div>
+    <nav class="bg-blue-800 text-white shadow-md sticky top-0 z-40">
+        <div class="px-4 py-3 flex justify-between items-center">
+            <div class="flex flex-col">
+                <span class="font-bold text-lg flex items-center gap-1">🗺️ Portal</span>
+                <span id="userEmailDisplay" class="text-[10px] opacity-80 hidden truncate max-w-[150px]"></span>
             </div>
+            <button id="btnLogout" class="bg-blue-700 hover:bg-blue-900 px-4 py-2 rounded-full text-xs font-bold transition shadow-inner">
+                Sair
+            </button>
         </div>
     </nav>
 
@@ -29,18 +27,17 @@
 
     <main id="mainContainer" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
         
-        <div id="painelResponsavel" class="hidden space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-800">Meus Territórios</h1>
-                    <p class="text-sm text-gray-500 mt-1">Mapas designados para você trabalhar no momento.</p>
-                </div>
-                <button id="btnPegarMapa" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-md text-sm font-bold transition shadow-sm flex items-center justify-center gap-2">
-                    📥 Pegar Novo Território
-                </button>
+        <div id="painelResponsavel" class="hidden flex flex-col h-full pb-10">
+            <div class="mb-4">
+                <h1 class="text-xl font-bold text-gray-800">Meus Territórios</h1>
+                <p class="text-xs text-gray-500">Mapas ativos em sua responsabilidade.</p>
             </div>
+            
+            <button id="btnPegarMapa" class="w-full bg-green-600 active:bg-green-800 text-white px-4 py-4 rounded-xl text-sm font-bold shadow-md mb-6 flex items-center justify-center gap-2 transform active:scale-95 transition-all">
+                📥 PEGAR NOVO TERRITÓRIO
+            </button>
 
-            <div id="gridTerritorios" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="gridTerritorios" class="flex flex-col gap-5">
                 </div>
         </div>
 
@@ -63,27 +60,40 @@
 
     </main>
 
-    <div id="modalNovoMapa" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
-        <div class="relative w-full max-w-lg shadow-2xl rounded-lg bg-white overflow-hidden">
-            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-900">Territórios Disponíveis</h3>
-                <button id="btnFecharModalMapa" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+    <div id="modalNovoMapa" class="hidden fixed inset-0 z-50 flex flex-col justify-end">
+        <div id="btnFecharFundo" class="absolute inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity"></div>
+        
+        <div class="relative w-full bg-white rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh] animate-[slideUp_0.3s_ease-out]">
+            <div class="w-full flex justify-center pt-3 pb-1">
+                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+
+            <div class="px-5 pb-3 pt-2 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-900">Mapas Disponíveis</h3>
+                <button id="btnFecharModalMapa" class="text-gray-400 hover:text-gray-600 font-bold text-2xl p-2">&times;</button>
             </div>
             
-            <div class="p-6">
-                <div id="alertaRegras" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-xs text-yellow-800 font-medium">
-                    </div>
+            <div class="p-5 overflow-y-auto flex-1">
+                <div id="alertaRegras" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-800 font-medium">
+                </div>
 
-                <div class="max-h-64 overflow-y-auto pr-2 space-y-3" id="listaDisponiveis">
+                <div class="space-y-3" id="listaDisponiveis">
                     <p class="text-center text-sm text-gray-500 py-4">Carregando mapas...</p>
                 </div>
             </div>
             
-            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
-                <button id="btnCancelarModal" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 font-medium transition text-sm">Cancelar</button>
+            <div class="p-4 border-t border-gray-100 bg-gray-50 pb-8 rounded-t-xl">
+                <button id="btnCancelarModal" class="w-full py-3 bg-gray-200 text-gray-800 rounded-xl font-bold text-sm active:bg-gray-300">Voltar</button>
             </div>
         </div>
     </div>
+
+    <style>
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -190,31 +200,33 @@
                     const linkImagemGitHub = `https://congregacaouirauna.github.io/territorios/mapas/mapa-${t.numero}.jpg`;
 
                     const card = document.createElement('div');
-                    card.className = "bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col";
+                    card.className = "bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden flex flex-col";
                     
                     card.innerHTML = `
-                        <div class="h-48 bg-gray-200 relative">
-                            <img src="${linkImagemGitHub}" alt="Mapa ${t.numero}" class="w-full h-full object-cover border-b" onerror="this.src='https://via.placeholder.com/600x400?text=Mapa+Indisponível'">
-                            <div class="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow">
+                        <div class="h-56 bg-gray-100 relative">
+                            <img src="${linkImagemGitHub}" alt="Mapa ${t.numero}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/600x400?text=Mapa+Indisponível'">
+                            <div class="absolute top-3 right-3 bg-blue-600 text-white text-sm font-black px-3 py-1.5 rounded-full shadow-lg border-2 border-white">
                                 ${t.numero}
                             </div>
                         </div>
                         <div class="p-5 flex-1 flex flex-col">
-                            <h3 class="font-bold text-lg text-gray-800 mb-1">${t.nome}</h3>
-                            <a href="${t.mapaUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium mb-4 flex items-center gap-1 inline-block">
+                            <h3 class="font-black text-xl text-gray-800 mb-1 leading-tight">${t.nome}</h3>
+                            <a href="${t.mapaUrl}" target="_blank" class="text-blue-600 active:text-blue-800 text-sm font-bold mb-5 flex items-center gap-1 py-2">
                                 📍 Abrir no Google Maps ➔
                             </a>
                             
                             <div class="mt-auto pt-4 border-t border-gray-100">
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Onde você parou? (Checkpoint)</label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="nota-${idDoc}" value="${t.notaPausa || ''}" placeholder="Ex: Parei na casa verde..." class="flex-1 border border-gray-300 rounded text-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <button onclick="window.salvarNota('${idDoc}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-medium transition border border-gray-300">Salvar</button>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Sua Nota de Pausa</label>
+                                <div class="flex flex-col gap-2">
+                                    <input type="text" id="nota-${idDoc}" value="${t.notaPausa || ''}" placeholder="Ex: Casa verde da esquina..." class="w-full bg-gray-50 border border-gray-300 rounded-xl text-sm p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none transition-all">
+                                    <button onclick="window.salvarNota('${idDoc}')" class="w-full bg-gray-800 text-white active:bg-gray-900 py-3 rounded-xl text-sm font-bold shadow-sm transition-all">
+                                        Salvar Anotação
+                                    </button>
                                 </div>
                             </div>
 
-                            <button onclick="window.concluirTerritorio('${idDoc}', '${t.numero}')" class="mt-4 w-full bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300 py-2 rounded-md text-sm font-bold transition">
-                                ✅ Concluir Território
+                            <button onclick="window.concluirTerritorio('${idDoc}', '${t.numero}')" class="mt-5 w-full bg-orange-100 active:bg-orange-200 text-orange-800 border-2 border-orange-200 py-3.5 rounded-xl text-sm font-black transition-all">
+                                ✅ DEVOLVER TERRITÓRIO
                             </button>
                         </div>
                     `;
