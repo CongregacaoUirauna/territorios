@@ -15,6 +15,7 @@
                     🗺️ Gestão Admin
                 </div>
                 <div>
+                    <span id="userEmailDisplay" class="text-sm mr-4 opacity-75 hidden sm:inline-block"></span>
                     <button id="btnLogout" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm font-semibold transition">Sair</button>
                 </div>
             </div>
@@ -40,7 +41,9 @@
         <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-lg font-bold text-gray-700">📍 Controle de Territórios</h2>
-                <button id="btnNovoTerritorio" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold transition">+ Novo Território</button>
+                <button id="btnNovoTerritorio" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold transition shadow-sm">
+                    + Novo Território
+                </button>
             </div>
 
             <div class="overflow-x-auto">
@@ -55,110 +58,182 @@
                         </tr>
                     </thead>
                     <tbody id="tabelaTerritorios" class="bg-white divide-y divide-gray-200">
-                        <tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Carregando dados...</td></tr>
+                        <tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Carregando dados do banco...</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
+
+        <div id="modalTerritorio" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div class="relative p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
+                <div class="mt-3">
+                    <h3 class="text-lg leading-6 font-bold text-gray-900 mb-4">Cadastrar Novo Território</h3>
+                    <form id="formTerritorio" class="text-left space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Número do Território</label>
+                            <input type="text" id="numTerritorio" placeholder="Ex: 01, 02, 15..." required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome ou Descrição</label>
+                            <input type="text" id="nomeTerritorio" placeholder="Ex: Centro - Setor Comercial" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Coordenadas (Lat, Long)</label>
+                            <input type="text" id="coordTerritorio" placeholder="Ex: -7.1234, -38.5678" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <p class="text-xs text-gray-500 mt-1">Copie exatamente como aparece no Google Maps.</p>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" id="btnFecharModal" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium transition">Cancelar</button>
+                            <button type="submit" id="btnSalvarTerritorio" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition shadow-sm">Salvar no Firestore</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Substitua pelas chaves reais do seu projeto Firebase
+        // Suas credenciais reais do Firebase
         const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
-            authDomain: "seu-projeto.firebaseapp.com",
-            projectId: "seu-projeto",
-            storageBucket: "seu-projeto.appspot.com",
-            messagingSenderId: "SEU_SENDER_ID",
-            appId: "SEU_APP_ID"
+            apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
+            authDomain: "territorios-e9dd4.firebaseapp.com",
+            projectId: "territorios-e9dd4",
+            storageBucket: "territorios-e9dd4.firebasestorage.app",
+            messagingSenderId: "903988299465",
+            appId: "1:903988299465:web:ca8acd8fcb9b6331636f18"
         };
 
-        // Inicialização
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
         const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        // Referências do DOM
+        // Referências DOM
         const tabelaTerritorios = document.getElementById('tabelaTerritorios');
-        const toggleSugestoes = document.getElementById('toggleSugestoes');
+        const userEmailDisplay = document.getElementById('userEmailDisplay');
+        const btnLogout = document.getElementById('btnLogout');
+        const modal = document.getElementById('modalTerritorio');
+        const btnNovo = document.getElementById('btnNovoTerritorio');
+        const btnFechar = document.getElementById('btnFecharModal');
+        const form = document.getElementById('formTerritorio');
 
-        // 1. Monitorar Autenticação (Proteção da Rota)
-        /* onAuthStateChanged(auth, (user) => {
+        // 1. Proteção de Rota (Guardião)
+        onAuthStateChanged(auth, (user) => {
             if (!user) {
-                window.location.href = "login.html"; // Redireciona se não estiver logado
+                window.location.href = "login.html"; // Expulsa se não estiver logado
             } else {
-                // Aqui você pode adicionar uma validação extra para checar se o user é ADMIN no Firestore
-                carregarDados();
-            }
-        }); 
-        */
-
-        // Para testes imediatos sem Auth configurado, chame direto:
-        carregarDadosMockados(); 
-
-        // 2. Lógica do "Botão Mestre" (Configurações Globais)
-        toggleSugestoes.addEventListener('change', async (e) => {
-            const isAtivo = e.target.checked;
-            try {
-                // Atualiza o documento de configurações no Firestore
-                // const configRef = doc(db, "configuracoes", "gerais");
-                // await updateDoc(configRef, { sugestoesAtivas: isAtivo });
-                console.log(`Regra de sugestão alterada para: ${isAtivo ? 'Valendo' : 'Pausada'}`);
-            } catch (error) {
-                console.error("Erro ao atualizar regra:", error);
-                e.target.checked = !isAtivo; // Reverte na tela em caso de erro
-                alert("Erro ao salvar configuração.");
+                userEmailDisplay.textContent = user.email;
+                userEmailDisplay.classList.remove('hidden');
+                iniciarEscutaDeTerritorios(); // Só carrega os dados se estiver autenticado
             }
         });
 
-        // 3. Renderização de Dados (Simulação do Firestore para você visualizar o layout)
-        function carregarDadosMockados() {
-            const mockData = [
-                { id: "T-01", nome: "Território 01 - Centro", responsavel: "João Pedro", status: "Em andamento", coord: "-7.1234,-38.5678" },
-                { id: "T-02", nome: "Território 02 - Bairro Novo", responsavel: "Sem responsável", status: "Disponível", coord: "-7.1300,-38.5700" }
-            ];
+        // 2. Logout
+        btnLogout.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                window.location.href = "login.html";
+            });
+        });
 
-            tabelaTerritorios.innerHTML = ''; // Limpa o "Carregando"
+        // 3. Controle do Modal
+        btnNovo.addEventListener('click', () => modal.classList.remove('hidden'));
+        btnFechar.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            form.reset();
+        });
 
-            mockData.forEach(t => {
-                // Lógica de URL do Google Maps com coordenadas e imagem hospedada no GitHub Pages
-                const linkMapaGoogle = `https://maps.google.com/?q=${t.coord}`;
-                const linkImagemGitHub = `https://seu-usuario.github.io/seu-repo/mapas/${t.id.toLowerCase()}.jpg`;
+        // 4. Salvar Novo Território no Firestore
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSalvar = document.getElementById('btnSalvarTerritorio');
+            const textoOriginal = btnSalvar.innerText;
+            
+            btnSalvar.innerText = "Salvando...";
+            btnSalvar.disabled = true;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${t.nome}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${t.responsavel !== "Sem responsável" ? 
-                          `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">${t.responsavel}</span>` : 
-                          `<span class="text-gray-400 italic">Nenhum</span>`}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${t.status === 'Disponível' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
-                            ${t.status}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <a href="${linkMapaGoogle}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1">
-                            🗺️ Ver no Maps
-                        </a>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="abrirModalDesignacao('${t.id}')">Designar</button>
-                    </td>
-                `;
-                tabelaTerritorios.appendChild(tr);
+            const numero = document.getElementById('numTerritorio').value.trim();
+            const nome = document.getElementById('nomeTerritorio').value.trim();
+            const coordenadas = document.getElementById('coordTerritorio').value.trim();
+
+            try {
+                // Salva o documento com ID customizado. Ex: "T01"
+                await setDoc(doc(db, "territorios", `T${numero}`), {
+                    numero: numero,
+                    nome: nome,
+                    coordenadas: coordenadas,
+                    status: "Disponível",
+                    responsavelAtual: null,
+                    ultimaConclusao: null,
+                    criadoEm: new Date().toISOString()
+                });
+
+                modal.classList.add('hidden');
+                form.reset();
+                // Não precisamos de alert() de sucesso ou recarregar a tabela, o onSnapshot cuida disso!
+            } catch (error) {
+                console.error("Erro ao salvar:", error);
+                alert("Erro ao salvar. Verifique o console.");
+            } finally {
+                btnSalvar.innerText = textoOriginal;
+                btnSalvar.disabled = false;
+            }
+        });
+
+        // 5. Leitura em Tempo Real (A Mágica do onSnapshot)
+        function iniciarEscutaDeTerritorios() {
+            const territoriosRef = collection(db, "territorios");
+            
+            // onSnapshot fica "ouvindo" o banco. Qualquer mudança, ele re-renderiza a tabela.
+            onSnapshot(territoriosRef, (snapshot) => {
+                tabelaTerritorios.innerHTML = ''; // Limpa a tabela
+                
+                if (snapshot.empty) {
+                    tabelaTerritorios.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum território cadastrado ainda.</td></tr>`;
+                    return;
+                }
+
+                snapshot.forEach((docSnap) => {
+                    const t = docSnap.data();
+                    const id = docSnap.id;
+                    
+                    // Lógica de URLs
+                    // Substitua 'SEU_USUARIO' e 'SEU_REPOSITORIO' pelos dados reais do seu GitHub
+                    const linkImagemGitHub = `https://SEU_USUARIO.github.io/SEU_REPOSITORIO/mapas/mapa-${t.numero}.jpg`;
+                    const linkMapaGoogle = `https://www.google.com/maps?q=${t.coordenadas}`;
+
+                    const statusBadge = t.status === 'Disponível' 
+                        ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Disponível</span>' 
+                        : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Em andamento</span>';
+
+                    const responsavelDisplay = t.responsavelAtual 
+                        ? `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">${t.responsavelAtual}</span>` 
+                        : `<span class="text-gray-400 italic">Nenhum</span>`;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${t.numero} - ${t.nome}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${responsavelDisplay}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <a href="${linkMapaGoogle}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-medium">
+                                🗺️ Ver no Maps
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="alert('Função de Editar/Designar será implementada no próximo passo!')">Editar</button>
+                        </td>
+                    `;
+                    tabelaTerritorios.appendChild(tr);
+                });
+            }, (error) => {
+                console.error("Erro ao escutar dados:", error);
+                tabelaTerritorios.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-red-500 font-bold">Erro de permissão. Você é um administrador?</td></tr>`;
             });
         }
-
-        // Função global para o clique no botão Designar
-        window.abrirModalDesignacao = (id) => {
-            alert(`Aqui abriremos um Modal para atribuir um Responsável ao ${id} e alterar o status para Em andamento no Firestore.`);
-        };
     </script>
 </body>
 </html>
