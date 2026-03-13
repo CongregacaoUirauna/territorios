@@ -78,10 +78,10 @@
                             <input type="text" id="nomeTerritorio" placeholder="Ex: Centro - Setor Comercial" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Coordenadas (Lat, Long)</label>
-                            <input type="text" id="coordTerritorio" placeholder="Ex: -7.1234, -38.5678" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                            <p class="text-xs text-gray-500 mt-1">Copie exatamente como aparece no Google Maps.</p>
-                        </div>
+    <label class="block text-sm font-medium text-gray-700">Link do Google My Maps</label>
+    <input type="url" id="linkMapaTerritorio" placeholder="https://www.google.com/maps/d/viewer?..." required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+    <p class="text-xs text-gray-500 mt-1">Cole o link de compartilhamento (visualização) do My Maps.</p>
+</div>
                         <div class="flex justify-end gap-3 mt-6">
                             <button type="button" id="btnFecharModal" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium transition">Cancelar</button>
                             <button type="submit" id="btnSalvarTerritorio" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition shadow-sm">Salvar no Firestore</button>
@@ -157,19 +157,19 @@
 
             const numero = document.getElementById('numTerritorio').value.trim();
             const nome = document.getElementById('nomeTerritorio').value.trim();
-            const coordenadas = document.getElementById('coordTerritorio').value.trim();
+            const linkMapa = document.getElementById('linkMapaTerritorio').value.trim();
 
-            try {
-                // Salva o documento com ID customizado. Ex: "T01"
-                await setDoc(doc(db, "territorios", `T${numero}`), {
-                    numero: numero,
-                    nome: nome,
-                    coordenadas: coordenadas,
-                    status: "Disponível",
-                    responsavelAtual: null,
-                    ultimaConclusao: null,
-                    criadoEm: new Date().toISOString()
-                });
+try {
+    // Salva o documento com ID customizado. Ex: "T01"
+    await setDoc(doc(db, "territorios", `T${numero}`), {
+        numero: numero,
+        nome: nome,
+        mapaUrl: linkMapa,
+        status: "Disponível",
+        responsavelAtual: null,
+        ultimaConclusao: null,
+        criadoEm: new Date().toISOString()
+    });
 
                 modal.classList.add('hidden');
                 form.reset();
@@ -201,9 +201,10 @@
                     const id = docSnap.id;
                     
                     // Lógica de URLs
-                    // Substitua 'SEU_USUARIO' e 'SEU_REPOSITORIO' pelos dados reais do seu GitHub
+                    // Usamos o link direto do My Maps que vem do banco
+                    const linkMapaGoogle = t.mapaUrl; 
+                    // Link da imagem hospedada no seu GitHub Pages
                     const linkImagemGitHub = `https://congregacaouirauna.github.io/territorios/mapas/mapa-${t.numero}.jpg`;
-                    const linkMapaGoogle = `https://www.google.com/maps?q=${t.coordenadas}`;
 
                     const statusBadge = t.status === 'Disponível' 
                         ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Disponível</span>' 
