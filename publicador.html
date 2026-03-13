@@ -46,14 +46,8 @@
                 <h1 class="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">📢 Mural de Avisos</h1>
                 <p class="text-sm text-gray-500 mb-6">Acompanhe aqui a programação da semana e informações importantes.</p>
                 
-                <div id="containerAvisos" class="space-y-4">
-                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="font-bold text-blue-800">Serviço de Campo</span>
-                            <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">Atual</span >
-                        </div>
-                        <p class="text-sm text-gray-700">A programação detalhada dos grupos será exibida aqui. Fale com seu superintendente de grupo para receber sua designação diária.</p>
-                    </div>
+                <div id="containerAvisos" class="space-y-5">
+                    <p class="text-center text-sm text-gray-500 py-6 italic animate-pulse">Buscando avisos no mural...</p>
                 </div>
             </div>
         </div>
@@ -146,16 +140,17 @@
 
                     // Roteamento de Interface
                     if (dados.papel === 'admin') {
-                        // Se um admin cair aqui, joga ele pro dashboard dele
                         window.location.href = "admin-dashboard.html";
                     } else if (dados.papel === 'responsavel') {
                         painelResponsavel.classList.remove('hidden');
+                        painelPublicador.classList.remove('hidden'); // Responsável também vê o mural!
                         iniciarEscutaMeusTerritorios(user.email);
                     } else {
-                        // Fallback e Publicador Comum
                         painelPublicador.classList.remove('hidden');
-                        // Iniciar a escuta do mural de avisos no futuro
                     }
+                    
+                    // Todos (exceto Admin) iniciam a escuta do Mural
+                    iniciarEscutaDeAvisos(dados.papel, user.email);
                 } else {
                     // Sem perfil? Bloqueia.
                     auth.signOut();
@@ -274,6 +269,89 @@
             }
         };
 
+        // ==========================================
+        // LÓGICA DO MURAL DE AVISOS E PROGRAMAÇÃO
+        // ==========================================
+        function iniciarEscutaDeAvisos(papelUsuario, emailUsuario) {
+            const containerAvisos = document.getElementById('containerAvisos');
+            
+            onSnapshot(collection(db, "anuncios"), (snapshot) => {
+                containerAvisos.innerHTML = '';
+                let temAvisoVisivel = false;
+
+                // 1. Extrai e Ordena os avisos (do mais novo para o mais velho)
+                let avisos = [];
+                snapshot.forEach(doc => avisos.push({ id: doc.id, ...doc.data() }));
+                avisos.sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+
+                avisos.forEach(a => {
+                    // 2. Filtro de Segurança (Público Alvo)
+                    let podeVer = false;
+                    if (a.publicoAlvo === 'todos') podeVer = true;
+                    else if (a.publicoAlvo === 'responsaveis' && papelUsuario === 'responsavel') podeVer = true;
+                    else if (a.publicoAlvo === 'publicadores' && papelUsuario === 'publicador') podeVer = true;
+                    else if (a.publicoAlvo === 'especificos' && a.pessoasEspecificas && a.pessoasEspecificas.includes(emailUsuario)) podeVer = true;
+
+                    if (!podeVer) return; // Se não for para ele, pula para o próximo!
+                    temAvisoVisivel = true;
+
+                    // 3. Renderiza o Card
+                    const card = document.createElement('div');
+                    card.className = "bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden";
+                    
+                    let htmlConteudo = '';
+
+                    if (a.tipo === 'texto') {
+                        // Layout de Aviso em Texto
+                        htmlConteudo = `<p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">${a.conteudo}</p>`;
+                    } else {
+                        // Layout de Programação (Tabela otimizada para Celular)
+                        let linhasHtml = '';
+                        a.conteudo.forEach(linha => {
+                            linhasHtml += `
+                                <div class="bg-gray-50 border border-gray-100 rounded-xl p-3 mb-2 flex flex-col gap-1">
+                                    <div class="flex justify-between items-center border-b border-gray-200 pb-1 mb-1">
+                                        <span class="font-black text-blue-800 text-sm">${linha.dia}</span>
+                                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">🕒 ${linha.hora}</span>
+                                    </div>
+                                    <div class="flex items-start gap-2 text-sm text-gray-700 mt-1">
+                                        <span>📍</span>
+                                        <span class="font-medium">${linha.local}</span>
+                                    </div>
+                                    <div class="flex items-start gap-2 text-sm text-gray-600">
+                                        <span>👔</span>
+                                        <span>Dirigente: <strong>${linha.dirigente}</strong></span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        htmlConteudo = `<div class="mt-2">${linhasHtml}</div>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="bg-blue-50/50 px-5 py-3 border-b border-gray-100 flex items-center gap-3">
+                            <span class="text-xl">📢</span>
+                            <h3 class="font-black text-gray-800 text-base leading-tight">${a.titulo}</h3>
+                        </div>
+                        <div class="p-5">
+                            ${htmlConteudo}
+                        </div>
+                    `;
+                    
+                    containerAvisos.appendChild(card);
+                });
+
+                if (!temAvisoVisivel) {
+                    containerAvisos.innerHTML = `
+                        <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center">
+                            <span class="text-3xl block mb-2">📭</span>
+                            <p class="text-gray-500 text-sm font-medium">Nenhum aviso ou programação para você no momento.</p>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
         // ==========================================
         // LÓGICA DE PEGAR NOVO TERRITÓRIO (Com Regras)
         // ==========================================
