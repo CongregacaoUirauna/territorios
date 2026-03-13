@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Portal - Gestão de Territórios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <nav class="bg-blue-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 font-bold text-lg sm:text-xl flex items-center gap-2">
+                    🗺️ Portal da Congregação
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="userEmailDisplay" class="text-xs sm:text-sm opacity-80 hidden"></span>
+                    <button id="btnLogout" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-sm font-semibold transition shadow-sm">Sair</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="loadingState" class="flex-1 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-800 mb-4"></div>
+        <p class="text-gray-500 font-medium text-sm animate-pulse">Autenticando e montando sua área...</p>
+    </div>
+
+    <main id="mainContainer" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+        
+        <div id="painelResponsavel" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Meus Territórios</h1>
+                    <p class="text-sm text-gray-500 mt-1">Mapas designados para você trabalhar no momento.</p>
+                </div>
+                <button id="btnPegarMapa" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-md text-sm font-bold transition shadow-sm flex items-center justify-center gap-2">
+                    📥 Pegar Novo Território
+                </button>
+            </div>
+
+            <div id="gridTerritorios" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </div>
+
+        <div id="painelPublicador" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">📢 Mural de Avisos</h1>
+                <p class="text-sm text-gray-500 mb-6">Acompanhe aqui a programação da semana e informações importantes.</p>
+                
+                <div id="containerAvisos" class="space-y-4">
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="font-bold text-blue-800">Serviço de Campo</span>
+                            <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">Atual</span >
+                        </div>
+                        <p class="text-sm text-gray-700">A programação detalhada dos grupos será exibida aqui. Fale com seu superintendente de grupo para receber sua designação diária.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="modalNovoMapa" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+        <div class="relative w-full max-w-lg shadow-2xl rounded-lg bg-white overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-900">Territórios Disponíveis</h3>
+                <button id="btnFecharModalMapa" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+            </div>
+            
+            <div class="p-6">
+                <div id="alertaRegras" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-xs text-yellow-800 font-medium">
+                    </div>
+
+                <div class="max-h-64 overflow-y-auto pr-2 space-y-3" id="listaDisponiveis">
+                    <p class="text-center text-sm text-gray-500 py-4">Carregando mapas...</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+                <button id="btnCancelarModal" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 font-medium transition text-sm">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, where, onSnapshot, updateDoc, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
+            authDomain: "territorios-e9dd4.firebaseapp.com",
+            projectId: "territorios-e9dd4",
+            storageBucket: "territorios-e9dd4.firebasestorage.app",
+            messagingSenderId: "903988299465",
+            appId: "1:903988299465:web:ca8acd8fcb9b6331636f18"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Referências DOM Globais
+        const loadingState = document.getElementById('loadingState');
+        const mainContainer = document.getElementById('mainContainer');
+        const painelResponsavel = document.getElementById('painelResponsavel');
+        const painelPublicador = document.getElementById('painelPublicador');
+        const userEmailDisplay = document.getElementById('userEmailDisplay');
+        
+        let currentUserEmail = null;
+
+        // 1. Guardião de Rota e Roteador Inteligente
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            currentUserEmail = user.email;
+            userEmailDisplay.textContent = user.email;
+            userEmailDisplay.classList.remove('hidden');
+
+            try {
+                // Descobre quem é o usuário consultando a coleção 'usuarios'
+                const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+                
+                if (userDoc.exists()) {
+                    const dados = userDoc.data();
+                    
+                    // Remove o spinner de carregamento
+                    loadingState.classList.add('hidden');
+                    mainContainer.classList.remove('hidden');
+
+                    // Roteamento de Interface
+                    if (dados.papel === 'admin') {
+                        // Se um admin cair aqui, joga ele pro dashboard dele
+                        window.location.href = "admin-dashboard.html";
+                    } else if (dados.papel === 'responsavel') {
+                        painelResponsavel.classList.remove('hidden');
+                        iniciarEscutaMeusTerritorios(user.email);
+                    } else {
+                        // Fallback e Publicador Comum
+                        painelPublicador.classList.remove('hidden');
+                        // Iniciar a escuta do mural de avisos no futuro
+                    }
+                } else {
+                    // Sem perfil? Bloqueia.
+                    auth.signOut();
+                }
+            } catch (error) {
+                console.error("Erro ao validar perfil:", error);
+                alert("Erro ao carregar seu perfil. Tente novamente.");
+            }
+        });
+
+        // 2. Logout Global
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        // ==========================================
+        // LÓGICA DO RESPONSÁVEL
+        // ==========================================
+
+        const gridTerritorios = document.getElementById('gridTerritorios');
+
+        function iniciarEscutaMeusTerritorios(emailUsuario) {
+            // Busca territórios onde o responsavelAtual é igual ao e-mail logado
+            const q = query(collection(db, "territorios"), where("responsavelAtual", "==", emailUsuario));
+            
+            onSnapshot(q, (snapshot) => {
+                gridTerritorios.innerHTML = '';
+
+                if (snapshot.empty) {
+                    gridTerritorios.innerHTML = `
+                        <div class="col-span-full bg-white p-8 rounded-lg border border-dashed border-gray-300 text-center">
+                            <p class="text-gray-500 mb-4">Você não possui nenhum território designado no momento.</p>
+                            <p class="text-sm text-gray-400">Clique em "Pegar Novo Território" para começar ou aguarde uma designação.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                snapshot.forEach((docSnap) => {
+                    const t = docSnap.data();
+                    const idDoc = docSnap.id;
+                    const linkImagemGitHub = `https://congregacaouirauna.github.io/territorios/mapas/mapa-${t.numero}.jpg`;
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col";
+                    
+                    card.innerHTML = `
+                        <div class="h-48 bg-gray-200 relative">
+                            <img src="${linkImagemGitHub}" alt="Mapa ${t.numero}" class="w-full h-full object-cover border-b" onerror="this.src='https://via.placeholder.com/600x400?text=Mapa+Indisponível'">
+                            <div class="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow">
+                                ${t.numero}
+                            </div>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col">
+                            <h3 class="font-bold text-lg text-gray-800 mb-1">${t.nome}</h3>
+                            <a href="${t.mapaUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium mb-4 flex items-center gap-1 inline-block">
+                                📍 Abrir no Google Maps ➔
+                            </a>
+                            
+                            <div class="mt-auto pt-4 border-t border-gray-100">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Onde você parou? (Checkpoint)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="nota-${idDoc}" value="${t.notaPausa || ''}" placeholder="Ex: Parei na casa verde..." class="flex-1 border border-gray-300 rounded text-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <button onclick="window.salvarNota('${idDoc}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-medium transition border border-gray-300">Salvar</button>
+                                </div>
+                            </div>
+
+                            <button onclick="window.concluirTerritorio('${idDoc}', '${t.numero}')" class="mt-4 w-full bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300 py-2 rounded-md text-sm font-bold transition">
+                                ✅ Concluir Território
+                            </button>
+                        </div>
+                    `;
+                    gridTerritorios.appendChild(card);
+                });
+            });
+        }
+
+        // --- Funções injetadas no Window para funcionar via onclick nos cards gerados dinamicamente ---
+
+        window.salvarNota = async (idDoc) => {
+            const inputNota = document.getElementById(`nota-${idDoc}`);
+            const novaNota = inputNota.value.trim();
+            const btn = inputNota.nextElementSibling;
+            
+            btn.innerText = "...";
+            btn.disabled = true;
+
+            try {
+                await updateDoc(doc(db, "territorios", idDoc), {
+                    notaPausa: novaNota
+                });
+                btn.innerText = "Salvo!";
+                setTimeout(() => { btn.innerText = "Salvar"; btn.disabled = false; }, 2000);
+            } catch (error) {
+                alert("Erro ao salvar nota.");
+                btn.innerText = "Salvar"; btn.disabled = false;
+            }
+        };
+
+        window.concluirTerritorio = async (idDoc, numero) => {
+            if (confirm(`Tem certeza que deseja CONCLUIR e DEVOLVER o território ${numero}?\n\nEle sairá da sua lista.`)) {
+                try {
+                    // Update Crítico: Limpa o responsável, muda status e injeta a data/hora do servidor.
+                    await updateDoc(doc(db, "territorios", idDoc), {
+                        responsavelAtual: null,
+                        status: "Disponível",
+                        ultimaConclusao: serverTimestamp(),
+                        notaPausa: "" // Limpa o checkpoint para o próximo irmão
+                    });
+                } catch (error) {
+                    console.error("Erro ao concluir:", error);
+                    alert("Erro ao devolver o território.");
+                }
+            }
+        };
+
+        // ==========================================
+        // LÓGICA DE PEGAR NOVO TERRITÓRIO (Com Regras)
+        // ==========================================
+
+        const modalNovoMapa = document.getElementById('modalNovoMapa');
+        const listaDisponiveis = document.getElementById('listaDisponiveis');
+        const alertaRegras = document.getElementById('alertaRegras');
+
+        const abrirModal = () => modalNovoMapa.classList.remove('hidden');
+        const fecharModal = () => modalNovoMapa.classList.add('hidden');
+
+        document.getElementById('btnPegarMapa').addEventListener('click', async () => {
+            abrirModal();
+            listaDisponiveis.innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-6 h-6 border-[3px] border-current border-t-transparent text-blue-600 rounded-full"></div></div>';
+            
+            try {
+                // 1. Lê as Regras Mestras
+                const configSnap = await getDoc(doc(db, "configuracoes", "gerais"));
+                const config = configSnap.exists() ? configSnap.data() : { sugestaoAutomatica: false, varreduraCompleta: false };
+
+                // 2. Busca mapas disponíveis
+                const q = query(collection(db, "territorios"), where("status", "==", "Disponível"));
+                const querySnapshot = await getDocs(q);
+                
+                let mapas = [];
+                querySnapshot.forEach(doc => mapas.push({ id: doc.id, ...doc.data() }));
+
+                // 3. Aplica Regra: Varredura Completa (Filtra mapas já trabalhados)
+                if (config.varreduraCompleta) {
+                    mapas = mapas.filter(m => m.ultimaConclusao === null);
+                    alertaRegras.innerHTML = "<strong>Trava Ativa:</strong> Apenas mapas que ainda não foram trabalhados nesta rodada estão disponíveis.";
+                    alertaRegras.classList.remove('hidden');
+                } else {
+                    alertaRegras.classList.add('hidden');
+                }
+
+                // 4. Aplica Regra: Sugestão Automática (Ordena pelo mais antigo)
+                if (config.sugestaoAutomatica && mapas.length > 0) {
+                    mapas.sort((a, b) => {
+                        // Se for null (nunca trabalhado no ciclo), tem prioridade total (joga pro topo)
+                        if (!a.ultimaConclusao) return -1;
+                        if (!b.ultimaConclusao) return 1;
+                        // Compara timestamps reais
+                        return a.ultimaConclusao.toMillis() - b.ultimaConclusao.toMillis();
+                    });
+                } else if (!config.sugestaoAutomatica) {
+                    // Ordenação padrão numérica se a sugestão estiver desligada
+                    mapas.sort((a, b) => a.numero.localeCompare(b.numero, undefined, {numeric: true}));
+                }
+
+                // 5. Renderiza a lista
+                listaDisponiveis.innerHTML = '';
+                
+                if (mapas.length === 0) {
+                    listaDisponiveis.innerHTML = '<p class="text-center text-gray-500 py-4 font-medium">Nenhum território disponível no momento com as regras atuais.</p>';
+                    return;
+                }
+
+                mapas.forEach((m, index) => {
+                    // Destaque visual para o mapa sugerido (o primeiro da lista) se a sugestão estiver ligada
+                    const isSugerido = config.sugestaoAutomatica && index === 0;
+                    const badgeSugerido = isSugerido ? '<span class="ml-2 bg-green-100 text-green-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-green-200">Recomendado</span>' : '';
+                    
+                    const div = document.createElement('div');
+                    div.className = `flex justify-between items-center p-3 border rounded-md transition ${isSugerido ? 'bg-green-50 border-green-200' : 'bg-white hover:bg-gray-50 border-gray-200'}`;
+                    
+                    div.innerHTML = `
+                        <div class="pr-2">
+                            <p class="font-bold text-gray-800 text-sm">${m.numero} - ${m.nome} ${badgeSugerido}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">Última conclusão: ${m.ultimaConclusao ? new Date(m.ultimaConclusao.toDate()).toLocaleDateString('pt-BR') : 'Nunca / Rodada Nova'}</p>
+                        </div>
+                        <button onclick="window.autoDesignar('${m.id}', '${m.numero}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow-sm whitespace-nowrap">
+                            Pegar
+                        </button>
+                    `;
+                    listaDisponiveis.appendChild(div);
+                });
+
+            } catch (error) {
+                console.error(error);
+                listaDisponiveis.innerHTML = '<p class="text-center text-red-500 py-4 text-sm">Erro ao carregar mapas.</p>';
+            }
+        });
+
+        document.getElementById('btnFecharModalMapa').addEventListener('click', fecharModal);
+        document.getElementById('btnCancelarModal').addEventListener('click', fecharModal);
+
+        // Ação de se auto-designar a um território
+        window.autoDesignar = async (idDoc, numero) => {
+            if (!currentUserEmail) return;
+
+            try {
+                await updateDoc(doc(db, "territorios", idDoc), {
+                    responsavelAtual: currentUserEmail,
+                    status: "Em andamento"
+                });
+                fecharModal();
+                // Não precisa chamar função de atualizar a tela, o onSnapshot faz a mágica de injetar o card instantaneamente.
+            } catch (error) {
+                alert("Erro ao pegar território. Verifique sua conexão.");
+            }
+        };
+
+    </script>
+</body>
+</html>
