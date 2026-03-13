@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migração em Lote - Gestão de Territórios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased p-8">
+
+    <main class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-md border border-gray-200">
+        <h1 class="text-2xl font-bold text-blue-800 mb-2">🚀 Migração de Dados (Sheets ➔ Firestore)</h1>
+        <p class="text-gray-600 mb-6 text-sm">Faça o upload do arquivo CSV extraído da planilha. Certifique-se de estar logado como Administrador no sistema antes de executar.</p>
+
+        <div class="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
+            <input type="file" id="csvFileInput" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"/>
+        </div>
+
+        <button id="btnProcessar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            Analisar e Iniciar Migração
+        </button>
+
+        <div id="logArea" class="mt-6 p-4 bg-gray-900 text-green-400 font-mono text-xs rounded h-64 overflow-y-auto hidden">
+            // Log de processamento do sistema...
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Cole as MESMAS credenciais do admin-dashboard.html aqui
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
+            authDomain: "territorios-e9dd4.firebaseapp.com",
+            projectId: "territorios-e9dd4",
+            storageBucket: "territorios-e9dd4.firebasestorage.app",
+            messagingSenderId: "903988299465",
+            appId: "1:903988299465:web:ca8acd8fcb9b6331636f18"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Dicionário Oficial de Nomes
+        const nomesTerritorios = {
+            1: "Parte onde a irmã Vânia mora.", 2: "Posto de saúde da AABB", 3: "Por trás do estádio", 4: "Loteamento do posto Pai Veinho.", 5: "Quadras onde os irmãos Nicacio, Sonilde e Libetãnia moram.", 6: "Saída para São João. Lutty Gás.", 7: "Quadra onde Ivanilson morou e Zuilha mora.", 8: "Salão do Reino", 9: "Loteamento Beleza", 10: "Quadra da Igreja Adventista do sétimo dia.", 11: "Ao lado do cemitério.", 12: "Em frente ao ginásio do Salão do Reino.", 13: "Antiga Pousada Coco Verde.", 14: "Escola Benevenuto.", 15: "Quadra da Lavanderia.", 16: "Quadra da Arena de Futebol.", 17: "Quadra de Giudeth para trás.", 18: "Em frente a Bimoto", 19: "Cadeia pública/ Remédios", 20: "Em frente a Giudeth / Praça Joca Claudino", 21: "CREDAF", 22: "Igreja matriz", 23: "Prefeitura e Banco do Brasil", 24: "Farmácia de Gilvan / Nonatão loja 2", 25: "Jovelina Gomes / Madereira Rocha", 26: "Veinho", 27: "Novo Mercado de Bebe / Praça Palmira Ferreira", 28: "Lotérica", 29: "Bimoto / Biblioteca Municipal", 30: "Francinete / Casa do pão caseiro", 31: "Padaria Ferreira (Estrela azul) / Casa de João Paulo", 32: "Hospital Menino Jesus / Clinica DR. Diego", 33: "Secretaria de saúde / Pai de Zildilene", 34: "Saída para santa Umbelina", 35: "Chão do padre retiro", 36: "Retiro saída para Luís Gomes", 37: "Posto de saúde do retiro", 38: "Zildilene", 39: "Belém novo", 40: "Ginásio Bela vista", 41: "PETI da Bela vista", 42: "Pai de Rony", 43: "Leonel", 44: "Rony / Conceição", 45: "Ernani Sátyro/ Dona Lia", 46: "Edglê / Cagepa", 47: "Sítios Uiraúna", 48: "Joca Claudino (Cidade)", 49: "Sítios Joca Claudino", 50: "Poço Dantas (Cidade)", 51: "Sítios Poço Dantas", 52: "Bernadino Batista (Cidade)", 53: "Sítios Bernadino Batista"
+        };
+
+        const btnProcessar = document.getElementById('btnProcessar');
+        const fileInput = document.getElementById('csvFileInput');
+        const logArea = document.getElementById('logArea');
+
+        // Função auxiliar para imprimir no log da tela
+        function logMsg(msg) {
+            logArea.classList.remove('hidden');
+            logArea.innerHTML += `<div>> ${msg}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // Verifica Autenticação antes de permitir uso
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                alert("Você precisa estar logado como Administrador para rodar este script.");
+                btnProcessar.disabled = true;
+                logMsg("ERRO: Usuário não autenticado. Faça login no sistema primeiro.");
+            } else {
+                logMsg(`Autenticado como: ${user.email}. Pronto para iniciar.`);
+            }
+        });
+
+        btnProcessar.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Por favor, selecione o arquivo CSV primeiro.");
+                return;
+            }
+
+            btnProcessar.disabled = true;
+            btnProcessar.innerText = "Processando...";
+            logMsg("Lendo arquivo CSV...");
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async function(results) {
+                    const dados = results.data;
+                    logMsg(`CSV lido com sucesso. Encontradas ${dados.length} linhas.`);
+                    
+                    try {
+                        const batch = writeBatch(db);
+                        let contador = 0;
+
+                        dados.forEach(row => {
+                            const numRaw = row['Território Nº'];
+                            if (!numRaw) return; // Pula linhas vazias no final
+
+                            // 1. Formata o Número (ex: 1 vira "01")
+                            const numeroFormatado = String(numRaw).padStart(2, '0');
+                            const idDoc = `T${numeroFormatado}`;
+                            
+                            // 2. Busca o Nome no Dicionário
+                            const nome = nomesTerritorios[parseInt(numRaw)] || "Sem nome cadastrado";
+
+                            // 3. Lógica de Status e Responsável (Lê de trás para frente no histórico)
+                            let status = "Disponível";
+                            let responsavel = null;
+
+                            for (let i = 5; i >= 1; i--) {
+                                const designado = row[`Designado ${i}`];
+                                const dataConclusao = row[`Data Conclusão ${i}`];
+
+                                if (designado && designado.trim() !== "") {
+                                    if (!dataConclusao || dataConclusao.trim() === "") {
+                                        // Achou um designado sem data de conclusão
+                                        status = "Em andamento";
+                                        responsavel = designado.trim();
+                                        break; 
+                                    } else {
+                                        // O último a pegar já concluiu. O território está livre.
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // 4. Última Conclusão
+                            const ultimaConc = row['Última Data Concluída'];
+                            const ultimaConclusaoFinal = (ultimaConc && ultimaConc.trim() !== "") ? ultimaConc.trim() : null;
+
+                            // 5. Monta o Objeto Final para o Firestore
+                            const territorioRef = doc(db, "territorios", idDoc);
+                            batch.set(territorioRef, {
+                                numero: numeroFormatado,
+                                nome: nome,
+                                mapaUrl: "", // A ser preenchido futuramente
+                                status: status,
+                                responsavelAtual: responsavel,
+                                notaPausa: "",
+                                ultimaConclusao: ultimaConclusaoFinal,
+                                criadoEm: new Date().toISOString()
+                            });
+
+                            logMsg(`Preparando [${idDoc}]: Status -> ${status} | Resp -> ${responsavel || 'Nenhum'}`);
+                            contador++;
+                        });
+
+                        logMsg(`Enviando ${contador} territórios para o Firestore de uma só vez (Batch Commit)...`);
+                        
+                        // Executa a transação no banco
+                        await batch.commit();
+                        
+                        logMsg("✅ MIGRAÇÃO CONCLUÍDA COM SUCESSO! Você já pode abrir o Dashboard.");
+                        btnProcessar.innerText = "Migração Finalizada";
+
+                    } catch (error) {
+                        console.error(error);
+                        logMsg(`❌ ERRO FATAL: ${error.message}`);
+                        logMsg("Verifique as regras do Firestore ou se você é de fato Admin.");
+                        btnProcessar.disabled = false;
+                        btnProcessar.innerText = "Tentar Novamente";
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
