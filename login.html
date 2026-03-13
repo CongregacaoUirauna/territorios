@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Restrito - Gestão de Territórios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen antialiased">
+
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md border border-gray-200">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-blue-800 flex justify-center items-center gap-2">
+                🗺️ Gestão Admin
+            </h1>
+            <p class="text-sm text-gray-500 mt-2">Acesso exclusivo para Administradores e Responsáveis de Território.</p>
+        </div>
+
+        <form id="loginForm" class="space-y-6">
+            
+            <div id="errorAlert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm" role="alert">
+                <span id="errorMessage" class="block sm:inline">Credenciais inválidas.</span>
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700">E-mail de Acesso</label>
+                <input type="email" id="email" required 
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="admin@congregacao.com">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+                <input type="password" id="password" required 
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="••••••••">
+            </div>
+
+            <button type="submit" id="btnLogin" 
+                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                Entrar no Sistema
+            </button>
+        </form>
+
+        <div class="mt-6 text-center text-xs text-gray-400">
+            <p>Se você é um publicador, solicite seu link de acesso no WhatsApp da congregação.</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Substitua pelas suas credenciais do Firebase
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "seu-projeto.firebaseapp.com",
+            projectId: "seu-projeto"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Elementos da Interface
+        const loginForm = document.getElementById('loginForm');
+        const btnLogin = document.getElementById('btnLogin');
+        const errorAlert = document.getElementById('errorAlert');
+        const errorMessage = document.getElementById('errorMessage');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // UI Feedback: Estado de carregamento
+            btnLogin.disabled = true;
+            btnLogin.innerText = "Autenticando...";
+            errorAlert.classList.add('hidden');
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                // 1. Tenta autenticar no Firebase
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 2. Regra de Negócio: Verifica se o usuário tem permissão (Admin ou Responsável)
+                // Vamos buscar o perfil dele na coleção 'usuarios'
+                const userDocRef = doc(db, "usuarios", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    
+                    if (userData.perfil === 'admin' || userData.perfil === 'responsavel') {
+                        // Sucesso total: Redireciona para o painel
+                        window.location.href = "admin-dashboard.html";
+                    } else {
+                        // Autenticado, mas sem privilégios para essa tela
+                        throw new Error("unauthorized-role");
+                    }
+                } else {
+                    throw new Error("user-not-found-in-db");
+                }
+
+            } catch (error) {
+                console.error("Erro no login:", error);
+                
+                // Tratamento de erros elegante
+                let msg = "Ocorreu um erro ao tentar entrar.";
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    msg = "E-mail ou senha incorretos.";
+                } else if (error.message === "unauthorized-role" || error.message === "user-not-found-in-db") {
+                    msg = "Acesso negado. Esta área é restrita à administração.";
+                    // Importante: deslogar o usuário comum que tentou ser esperto
+                    import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js").then(({ signOut }) => signOut(auth));
+                }
+
+                errorMessage.innerText = msg;
+                errorAlert.classList.remove('hidden');
+            } finally {
+                // Restaura o botão
+                btnLogin.disabled = false;
+                btnLogin.innerText = "Entrar no Sistema";
+            }
+        });
+    </script>
+</body>
+</html>
