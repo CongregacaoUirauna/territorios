@@ -118,31 +118,34 @@
                     }
                 }
 
-                // 3. COM O USUÁRIO AUTENTICADO NO FIREBASE, VERIFICA O BANCO DE DADOS
+                    // 3. SINCRONIZAÇÃO DE PERFIL COM A FONTE DA VERDADE (AUTORIZAÇÕES)
                 const userDocRef = doc(db, "usuarios", user.uid);
-                const userDocSnap = await getDoc(userDocRef);
+                
+                // Busca a autorização atualizada feita pelo Admin
+                const q = query(collection(db, "autorizacoes"), where("email", "==", email));
+                const querySnapshot = await getDocs(q);
 
-                if (userDocSnap.exists()) {
-                    // Usuário já tem perfil validado, apenas roteia
-                    const userData = userDocSnap.data();
-                    redirecionarPorPapel(userData.papel);
+                if (!querySnapshot.empty) {
+                    const autorizacaoData = querySnapshot.docs[0].data();
+                    const papelAtribuido = autorizacaoData.papel || 'publicador';
+                    const nomeAtribuido = autorizacaoData.nome || 'Irmão(ã)';
+
+                    // Atualiza ou Cria o perfil em "usuarios" SEMPRE que logar (Auto-cura)
+                    await setDoc(userDocRef, {
+                        email: email,
+                        papel: papelAtribuido,
+                        nome: nomeAtribuido
+                    }, { merge: true });
+
+                    redirecionarPorPapel(papelAtribuido);
                 } else {
-                    // 4. PRIMEIRO ACESSO: PROCURA NA "SALA DE ESPERA" (COLEÇÃO AUTORIZACOES)
-                    const q = query(collection(db, "autorizacoes"), where("email", "==", email));
-                    const querySnapshot = await getDocs(q);
-
-                    if (!querySnapshot.empty) {
-                        // E-mail autorizado encontrado! Cria o perfil definitivo.
-                        const autorizacaoData = querySnapshot.docs[0].data();
-                        const papelAtribuido = autorizacaoData.papel || 'publicador'; // Fallback de segurança
-
-                        await setDoc(userDocRef, {
-                            email: email,
-                            papel: papelAtribuido
-                        });
-
-                        redirecionarPorPapel(papelAtribuido);
-                    } else {
+                    // E-mail não está na lista de autorizações do Admin
+                    if (isNewUser) {
+                        await user.delete(); // Limpa conta indevida
+                    }
+                    await auth.signOut();
+                    throw new Error('E-mail não autorizado. Solicite acesso ao Administrador.');
+                }
                         // E-mail não autorizado pelo Admin
                         if (isNewUser) {
                             // Limpa a conta indevida que acabou de ser criada no Auth
