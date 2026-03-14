@@ -172,22 +172,26 @@
                 <h2 class="text-lg font-bold text-gray-700 flex items-center gap-2">👥 Gestão da Equipe (Autorizações)</h2>
             </div>
 
-            <form id="formAutorizacao" class="flex flex-col sm:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded border border-gray-100">
-                <div class="flex-1">
+            <form id="formAutorizacao" class="grid grid-cols-1 sm:grid-cols-12 gap-4 mb-6 bg-gray-50 p-4 rounded border border-gray-100">
+                <div class="sm:col-span-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">E-mail do Irmão</label>
                     <input type="email" id="emailAutorizado" placeholder="exemplo@gmail.com" required class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                 </div>
-                <div class="w-full sm:w-48">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Papel / Acesso</label>
+                <div class="sm:col-span-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome (Igual ao Relatório)</label>
+                    <input type="text" id="nomeAutorizado" placeholder="Ex: Glebston Lima" required class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Acesso</label>
                     <select id="papelAutorizado" required class="block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         <option value="responsavel">Responsável</option>
-                        <option value="admin">Administrador</option>
-                        <option value="publicador">Publicador Comum</option>
+                        <option value="publicador">Publicador</option>
+                        <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div class="flex items-end">
-                    <button type="submit" id="btnSalvarAutorizacao" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-md text-sm font-bold transition shadow-sm">
-                        Autorizar Acesso
+                <div class="sm:col-span-2 flex items-end">
+                    <button type="submit" id="btnSalvarAutorizacao" class="w-full bg-green-600 hover:bg-green-700 text-white px-2 py-2.5 rounded-md text-sm font-bold transition shadow-sm">
+                        Autorizar
                     </button>
                 </div>
             </form>
@@ -196,7 +200,8 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-mail Autorizado</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome do Irmão</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-mail</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Papel</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
@@ -739,19 +744,41 @@
                     if (authData.papel === 'admin') papelBadge = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>';
                     else if (authData.papel === 'responsavel') papelBadge = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Responsável</span>';
                     else papelBadge = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Publicador</span>';
-                    const tr = document.createElement('tr'); tr.classList.add('hover:bg-gray-50', 'transition');
-                    tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${emailId}</td><td class="px-6 py-4 whitespace-nowrap">${papelBadge}</td><td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button class="text-red-600 hover:text-red-800 transition font-bold" onclick="window.removerAutorizacao('${emailId}')">Remover</button></td>`;
+                    const nomeTabela = authData.nome || '<span class="text-red-500 italic">Sem nome</span>';
+
+                    const tr = document.createElement('tr');
+                    tr.classList.add('hover:bg-gray-50', 'transition');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${nomeTabela}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${emailId}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${papelBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button class="text-red-600 hover:text-red-800 transition font-bold" onclick="window.removerAutorizacao('${emailId}')">Remover</button>
+                        </td>
+                    `;
                     tabelaAutorizacoes.appendChild(tr);
                 });
+            }, (error) => {
+                console.error("Erro na leitura da equipe:", error);
             });
         };
 
         formAutorizacao.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btnSalvarAutorizacao'); btn.innerText = "Salvando..."; btn.disabled = true;
+            const btn = document.getElementById('btnSalvarAutorizacao');
+            btn.innerText = "Salvando..."; btn.disabled = true;
+
             const email = document.getElementById('emailAutorizado').value.trim().toLowerCase();
+            const nomeOficial = document.getElementById('nomeAutorizado').value.trim();
+            const papel = document.getElementById('papelAutorizado').value;
+
             try {
-                await setDoc(doc(db, "autorizacoes", email), { email: email, papel: document.getElementById('papelAutorizado').value, criadoEm: new Date().toISOString() });
+                await setDoc(doc(db, "autorizacoes", email), {
+                    email: email, 
+                    nome: nomeOficial, // Salva o nome oficial idêntico ao de relatórios
+                    papel: papel,
+                    criadoEm: new Date().toISOString()
+                });
                 formAutorizacao.reset();
             } catch (error) { alert("Erro ao salvar autorização."); } 
             finally { btn.innerText = "Autorizar Acesso"; btn.disabled = false; }
