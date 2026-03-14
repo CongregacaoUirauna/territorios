@@ -41,6 +41,32 @@
                 </div>
         </div>
 
+        <div id="painelRelatorio" class="hidden space-y-6 mb-8">
+            <div class="bg-gradient-to-r from-blue-700 to-blue-900 p-6 rounded-2xl shadow-md text-white">
+                <h2 class="text-xl font-black mb-1 flex items-center gap-2">📝 Meu Relatório Mensal</h2>
+                <p class="text-blue-100 text-sm mb-6">Preencha seus dados para enviar ao Gestor.</p>
+                
+                <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20 space-y-4">
+                    <p class="text-sm font-medium">Publicador: <span id="nomePublicadorRelatorio" class="font-bold text-yellow-300">Carregando...</span></p>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-blue-100 uppercase mb-1">Horas Totais</label>
+                            <input type="number" id="inputHoras" placeholder="Ex: 15" min="0" class="w-full bg-white text-gray-900 border-0 rounded-lg text-sm p-3 focus:ring-2 focus:ring-yellow-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-blue-100 uppercase mb-1">Estudos</label>
+                            <input type="number" id="inputEstudos" placeholder="Ex: 2" min="0" class="w-full bg-white text-gray-900 border-0 rounded-lg text-sm p-3 focus:ring-2 focus:ring-yellow-400 outline-none">
+                        </div>
+                    </div>
+                    
+                    <button id="btnGerarRelatorio" class="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 text-blue-900 py-3.5 rounded-xl text-sm font-black transition-all shadow-lg transform active:scale-95 flex justify-center items-center gap-2">
+                        🚀 ENVIAR RELATÓRIO OFICIAL
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div id="painelPublicador" class="hidden space-y-6">
             <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <h1 class="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">📢 Mural de Avisos</h1>
@@ -143,12 +169,19 @@
                         window.location.href = "admin-dashboard.html";
                     } else if (dados.papel === 'responsavel') {
                         painelResponsavel.classList.remove('hidden');
-                        painelPublicador.classList.remove('hidden'); // Responsável também vê o mural!
+                        document.getElementById('painelRelatorio').classList.remove('hidden');
+                        painelPublicador.classList.remove('hidden');
                         iniciarEscutaMeusTerritorios(user.email);
                     } else {
+                        document.getElementById('painelRelatorio').classList.remove('hidden');
                         painelPublicador.classList.remove('hidden');
                     }
                     
+                    // Injeta o Nome Oficial do usuário na tela do Relatório e salva globalmente
+                    window.currentUserNome = dados.nome || "Irmão(ã)";
+                    window.currentUserPapel = dados.papel;
+                    document.getElementById('nomePublicadorRelatorio').innerText = window.currentUserNome;
+
                     // Todos (exceto Admin) iniciam a escuta do Mural
                     iniciarEscutaDeAvisos(dados.papel, user.email);
                 } else {
@@ -500,6 +533,35 @@
             }
         };
 
+        // ==========================================
+        // LÓGICA DO GERADOR DE RELATÓRIO (INTEGRAÇÃO V2.9)
+        // ==========================================
+        document.getElementById('btnGerarRelatorio').addEventListener('click', () => {
+            // 1. Coleta os dados digitados
+            const horas = document.getElementById('inputHoras').value.trim() || "0";
+            const estudos = document.getElementById('inputEstudos').value.trim() || "0";
+            
+            // 2. Coleta os dados de Perfil (Nome e Grupo)
+            const nome = encodeURIComponent(window.currentUserNome); // encodeURIComponent garante que espaços virem %20 na URL
+            let grupo = "Publicador"; 
+            
+            // Lógica simples: se quiser aprimorar depois, podemos adicionar "Pioneiro" no painel admin.
+            // Por enquanto, mandamos o papel base.
+            if (window.currentUserPapel === 'responsavel' || window.currentUserPapel === 'publicador') {
+                grupo = encodeURIComponent("Publicador"); 
+                // Nota: O seu index.html de destino deve deixar o usuário alterar o grupo se ele for Pioneiro.
+            }
+
+            // 3. Monta o Link Inteligente
+            // ⚠️ ATENÇÃO GLEBSTON: SUBSTITUA O LINK ABAIXO PELO LINK REAL DO SEU SISTEMA DE RELATÓRIOS V2.9
+            const urlBaseDestino = "https://SEU_LINK_DO_RELATORIO_AQUI.com/index.html"; 
+            
+            const urlParametrizada = `${urlBaseDestino}?nome=${nome}&grupo=${grupo}&horas=${horas}&estudos=${estudos}`;
+
+            // 4. Redireciona o usuário em uma nova aba
+            window.open(urlParametrizada, '_blank');
+        });
+        
     </script>
 </body>
 </html>
