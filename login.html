@@ -122,12 +122,25 @@
                     const papelAtribuido = autorizacaoData.papel || 'publicador';
                     const nomeAtribuido = autorizacaoData.nome || 'Irmão(ã)';
 
-                    // 3. VERIFICA O PERFIL E CRIA APENAS NO PRIMEIRO ACESSO (EVITA O BLOQUEIO DE SEGURANÇA)
-                    const userDocRef = doc(db, "usuarios", user.uid);
-                    const userDocSnap = await getDoc(userDocRef);
+                    // 2. VERIFICA SE O USUÁRIO JÁ É VETERANO (PERFIL DEFINITIVO EM 'usuarios')
+                const userDocRef = doc(db, "usuarios", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
 
-                    if (!userDocSnap.exists()) {
-                        // Primeiro acesso real: Cria o perfil (A regra do Firebase permite 'create')
+                if (userDocSnap.exists()) {
+                    // Usuário já tem perfil validado no sistema. Entra direto!
+                    redirecionarPorPapel(userDocSnap.data().papel);
+                } else {
+                    // 3. PRIMEIRO ACESSO: BUSCA NA SALA DE ESPERA ('autorizacoes')
+                    const authDocRef = doc(db, "autorizacoes", email);
+                    const authDocSnap = await getDoc(authDocRef);
+
+                    if (authDocSnap.exists()) {
+                        // E-mail autorizado! Prepara os dados para criar o perfil oficial.
+                        const autorizacaoData = authDocSnap.data();
+                        const papelAtribuido = autorizacaoData.papel || 'publicador';
+                        const nomeAtribuido = autorizacaoData.nome || 'Irmão(ã)';
+
+                        // Cria o perfil oficial na coleção 'usuarios'
                         await setDoc(userDocRef, {
                             email: email,
                             papel: papelAtribuido,
@@ -135,18 +148,14 @@
                         });
                         redirecionarPorPapel(papelAtribuido);
                     } else {
-                        // O perfil já existe. Apenas lê o papel e entra direto sem tentar alterar dados!
-                        redirecionarPorPapel(userDocSnap.data().papel);
+                        // Não é veterano e não tem autorização na sala de espera. Bloqueio total.
+                        if (isNewUser) {
+                            await user.delete(); // Limpa a conta indevida no Auth
+                        }
+                        await auth.signOut();
+                        throw new Error('E-mail não autorizado. Solicite o acesso ao Administrador.');
                     }
-                } else {
-                    if (isNewUser) {
-                        await user.delete(); // Limpa a conta indevida
-                    }
-                    await auth.signOut();
-                    throw new Error('E-mail não autorizado. Solicite o acesso ao Administrador.');
-                }
-
-            } catch (error) {
+                } catch (error) {
                 console.error("Erro no fluxo de autenticação:", error);
                 
                 let mensagem = "Ocorreu um erro ao processar o acesso.";
