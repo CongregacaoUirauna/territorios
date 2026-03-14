@@ -56,12 +56,10 @@
             appId: "1:903988299465:web:ca8acd8fcb9b6331636f18"
         };
 
-        // Inicialização
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Referências do DOM
         const loginForm = document.getElementById('loginForm');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
@@ -69,7 +67,6 @@
         const errorAlert = document.getElementById('errorAlert');
         const errorMessage = document.getElementById('errorMessage');
 
-        // Função auxiliar de roteamento
         function redirecionarPorPapel(papel) {
             if (papel === 'admin') {
                 window.location.href = 'admin-dashboard.html';
@@ -102,26 +99,23 @@
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
                     user = userCredential.user;
                 } catch (authError) {
-                    // 2. SE NÃO EXISTIR OU CREDENCIAL INVÁLIDA, TENTA CRIAR (O "CAMINHO AUTOMÁTICO")
+                    // 2. SE NÃO EXISTIR OU CREDENCIAL INVÁLIDA, TENTA CRIAR
                     if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found') {
                         try {
                             const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
                             user = newUserCredential.user;
                             isNewUser = true;
                         } catch (createError) {
-                            // Se falhar na criação (ex: senha fraca), repassa o erro
                             throw createError;
                         }
                     } else {
-                        // Outros erros de login (ex: bloqueio por tentativas)
                         throw authError;
                     }
                 }
 
-                    // 3. SINCRONIZAÇÃO DE PERFIL COM A FONTE DA VERDADE (AUTORIZAÇÕES)
+                // 3. SINCRONIZAÇÃO DE PERFIL COM A FONTE DA VERDADE (AUTORIZAÇÕES)
                 const userDocRef = doc(db, "usuarios", user.uid);
                 
-                // Busca a autorização atualizada feita pelo Admin
                 const q = query(collection(db, "autorizacoes"), where("email", "==", email));
                 const querySnapshot = await getDocs(q);
 
@@ -139,20 +133,11 @@
 
                     redirecionarPorPapel(papelAtribuido);
                 } else {
-                    // E-mail não está na lista de autorizações do Admin
                     if (isNewUser) {
                         await user.delete(); // Limpa conta indevida
                     }
                     await auth.signOut();
-                    throw new Error('E-mail não autorizado. Solicite acesso ao Administrador.');
-                }
-                        // E-mail não autorizado pelo Admin
-                        if (isNewUser) {
-                            // Limpa a conta indevida que acabou de ser criada no Auth
-                            await user.delete(); 
-                        }
-                        await auth.signOut();
-                        throw new Error('E-mail não autorizado. Solicite o acesso ao Administrador.');
+                    throw new Error('E-mail não autorizado. Solicite o acesso ao Administrador.');
                 }
 
             } catch (error) {
