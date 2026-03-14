@@ -44,9 +44,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // Importação limpa, sem a necessidade de 'query' e 'where'
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Suas credenciais reais do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
             authDomain: "territorios-e9dd4.firebaseapp.com",
@@ -94,12 +94,11 @@
             let isNewUser = false;
 
             try {
-                // 1. TENTA LOGAR NORMALMENTE
+                // 1. TENTA LOGAR OU CRIAR CONTA (CAMINHO AUTOMÁTICO)
                 try {
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
                     user = userCredential.user;
                 } catch (authError) {
-                    // 2. SE NÃO EXISTIR OU CREDENCIAL INVÁLIDA, TENTA CRIAR
                     if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found') {
                         try {
                             const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -113,28 +112,35 @@
                     }
                 }
 
-                // 3. SINCRONIZAÇÃO DE PERFIL COM A FONTE DA VERDADE (AUTORIZAÇÕES)
-                const userDocRef = doc(db, "usuarios", user.uid);
-                
-                const q = query(collection(db, "autorizacoes"), where("email", "==", email));
-                const querySnapshot = await getDocs(q);
+                // 2. BUSCA NA SALA DE ESPERA (COLEÇÃO AUTORIZACOES)
+                // Usamos o doc direto pelo email (ID), evitando falhas se o cadastro for antigo!
+                const authDocRef = doc(db, "autorizacoes", email);
+                const authDocSnap = await getDoc(authDocRef);
 
-                if (!querySnapshot.empty) {
-                    const autorizacaoData = querySnapshot.docs[0].data();
+                if (authDocSnap.exists()) {
+                    const autorizacaoData = authDocSnap.data();
                     const papelAtribuido = autorizacaoData.papel || 'publicador';
                     const nomeAtribuido = autorizacaoData.nome || 'Irmão(ã)';
 
-                    // Atualiza ou Cria o perfil em "usuarios" SEMPRE que logar (Auto-cura)
-                    await setDoc(userDocRef, {
-                        email: email,
-                        papel: papelAtribuido,
-                        nome: nomeAtribuido
-                    }, { merge: true });
+                    // 3. VERIFICA O PERFIL E CRIA APENAS NO PRIMEIRO ACESSO (EVITA O BLOQUEIO DE SEGURANÇA)
+                    const userDocRef = doc(db, "usuarios", user.uid);
+                    const userDocSnap = await getDoc(userDocRef);
 
-                    redirecionarPorPapel(papelAtribuido);
+                    if (!userDocSnap.exists()) {
+                        // Primeiro acesso real: Cria o perfil (A regra do Firebase permite 'create')
+                        await setDoc(userDocRef, {
+                            email: email,
+                            papel: papelAtribuido,
+                            nome: nomeAtribuido
+                        });
+                        redirecionarPorPapel(papelAtribuido);
+                    } else {
+                        // O perfil já existe. Apenas lê o papel e entra direto sem tentar alterar dados!
+                        redirecionarPorPapel(userDocSnap.data().papel);
+                    }
                 } else {
                     if (isNewUser) {
-                        await user.delete(); // Limpa conta indevida
+                        await user.delete(); // Limpa a conta indevida
                     }
                     await auth.signOut();
                     throw new Error('E-mail não autorizado. Solicite o acesso ao Administrador.');
