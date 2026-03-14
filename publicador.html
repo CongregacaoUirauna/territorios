@@ -391,14 +391,20 @@
                 // 4. Aplica Regra: Sugestão Automática (Ordena pelo mais antigo)
                 if (config.sugestaoAutomatica && mapas.length > 0) {
                     mapas.sort((a, b) => {
-                        // Se for null (nunca trabalhado no ciclo), tem prioridade total (joga pro topo)
                         if (!a.ultimaConclusao) return -1;
                         if (!b.ultimaConclusao) return 1;
-                        // Compara timestamps reais
-                        return a.ultimaConclusao.toMillis() - b.ultimaConclusao.toMillis();
+
+                        // Extrai milissegundos independente de ser Timestamp (Novo) ou String (Planilha Antiga)
+                        const tempoA = typeof a.ultimaConclusao.toMillis === 'function' ? a.ultimaConclusao.toMillis() : new Date(a.ultimaConclusao).getTime();
+                        const tempoB = typeof b.ultimaConclusao.toMillis === 'function' ? b.ultimaConclusao.toMillis() : new Date(b.ultimaConclusao).getTime();
+
+                        // Proteção extra: se a data da planilha for inválida, joga para o final da fila
+                        if (isNaN(tempoA)) return 1;
+                        if (isNaN(tempoB)) return -1;
+
+                        return tempoA - tempoB;
                     });
                 } else if (!config.sugestaoAutomatica) {
-                    // Ordenação padrão numérica se a sugestão estiver desligada
                     mapas.sort((a, b) => a.numero.localeCompare(b.numero, undefined, {numeric: true}));
                 }
 
@@ -411,19 +417,38 @@
                 }
 
                 mapas.forEach((m, index) => {
-                    // Destaque visual para o mapa sugerido (o primeiro da lista) se a sugestão estiver ligada
                     const isSugerido = config.sugestaoAutomatica && index === 0;
                     const badgeSugerido = isSugerido ? '<span class="ml-2 bg-green-100 text-green-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-green-200">Recomendado</span>' : '';
                     
+                    // --- O TRADUTOR UNIVERSAL DE DATAS ---
+                    let dataExibicao = 'Nunca / Rodada Nova';
+                    if (m.ultimaConclusao) {
+                        if (typeof m.ultimaConclusao.toDate === 'function') {
+                            // Se for dado novo (Firebase)
+                            dataExibicao = m.ultimaConclusao.toDate().toLocaleDateString('pt-BR');
+                        } else {
+                            // Se for dado antigo (Planilha do Sheets)
+                            const dataConvertida = new Date(m.ultimaConclusao);
+                            if (!isNaN(dataConvertida)) {
+                                // Ajuste de fuso horário para não exibir 1 dia a menos
+                                dataConvertida.setMinutes(dataConvertida.getMinutes() + dataConvertida.getTimezoneOffset());
+                                dataExibicao = dataConvertida.toLocaleDateString('pt-BR');
+                            } else {
+                                dataExibicao = m.ultimaConclusao; // Se for um texto confuso, exibe como texto bruto
+                            }
+                        }
+                    }
+
+                    // Aproveitei para arredondar mais os botões e os cards para combinar com o visual "App"
                     const div = document.createElement('div');
-                    div.className = `flex justify-between items-center p-3 border rounded-md transition ${isSugerido ? 'bg-green-50 border-green-200' : 'bg-white hover:bg-gray-50 border-gray-200'}`;
+                    div.className = `flex justify-between items-center p-3 border rounded-xl transition ${isSugerido ? 'bg-green-50 border-green-200' : 'bg-white hover:bg-gray-50 border-gray-100'}`;
                     
                     div.innerHTML = `
                         <div class="pr-2">
                             <p class="font-bold text-gray-800 text-sm">${m.numero} - ${m.nome} ${badgeSugerido}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">Última conclusão: ${m.ultimaConclusao ? new Date(m.ultimaConclusao.toDate()).toLocaleDateString('pt-BR') : 'Nunca / Rodada Nova'}</p>
+                            <p class="text-xs text-gray-500 mt-1">Última conclusão: <span class="font-medium">${dataExibicao}</span></p>
                         </div>
-                        <button onclick="window.autoDesignar('${m.id}', '${m.numero}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow-sm whitespace-nowrap">
+                        <button onclick="window.autoDesignar('${m.id}', '${m.numero}')" class="bg-blue-600 active:bg-blue-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm whitespace-nowrap transition-transform active:scale-95">
                             Pegar
                         </button>
                     `;
