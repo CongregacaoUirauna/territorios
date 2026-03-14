@@ -44,9 +44,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        // Importação limpa, sem a necessidade de 'query' e 'where'
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // Suas credenciais reais do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
             authDomain: "territorios-e9dd4.firebaseapp.com",
@@ -112,17 +112,7 @@
                     }
                 }
 
-                // 2. BUSCA NA SALA DE ESPERA (COLEÇÃO AUTORIZACOES)
-                // Usamos o doc direto pelo email (ID), evitando falhas se o cadastro for antigo!
-                const authDocRef = doc(db, "autorizacoes", email);
-                const authDocSnap = await getDoc(authDocRef);
-
-                if (authDocSnap.exists()) {
-                    const autorizacaoData = authDocSnap.data();
-                    const papelAtribuido = autorizacaoData.papel || 'publicador';
-                    const nomeAtribuido = autorizacaoData.nome || 'Irmão(ã)';
-
-                    // 2. VERIFICA SE O USUÁRIO JÁ É VETERANO (PERFIL DEFINITIVO EM 'usuarios')
+                // 2. VERIFICA SE O USUÁRIO JÁ É VETERANO (PERFIL DEFINITIVO EM 'usuarios')
                 const userDocRef = doc(db, "usuarios", user.uid);
                 const userDocSnap = await getDoc(userDocRef);
 
@@ -155,7 +145,8 @@
                         await auth.signOut();
                         throw new Error('E-mail não autorizado. Solicite o acesso ao Administrador.');
                     }
-                } catch (error) {
+                }
+            } catch (error) {
                 console.error("Erro no fluxo de autenticação:", error);
                 
                 let mensagem = "Ocorreu um erro ao processar o acesso.";
