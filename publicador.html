@@ -553,10 +553,11 @@
             }
 
             // 3. Monta o Link Inteligente
-            // ⚠️ ATENÇÃO GLEBSTON: SUBSTITUA O LINK ABAIXO PELO LINK REAL DO SEU SISTEMA DE RELATÓRIOS V2.9
-            const urlBaseDestino = "https://SEU_LINK_DO_RELATORIO_AQUI.com/index.html"; 
+            // ⚠️ ATENÇÃO: SUBSTITUA O LINK ABAIXO PELO LINK REAL DO SEU SISTEMA DE RELATÓRIOS
+            const urlBaseDestino = "https://congregacaouirauna.github.io/relatorios/index.html"; 
             
-            const urlParametrizada = `${urlBaseDestino}?nome=${nome}&grupo=${grupo}&horas=${horas}&estudos=${estudos}`;
+            // Adicionado o parâmetro &participou=Sim no final da URL
+            const urlParametrizada = `${urlBaseDestino}?nome=${nome}&grupo=${grupo}&horas=${horas}&estudos=${estudos}&participou=Sim`;
 
             // 4. Redireciona o usuário em uma nova aba
             window.open(urlParametrizada, '_blank');
