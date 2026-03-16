@@ -51,17 +51,43 @@
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-blue-100 uppercase mb-1">Horas Totais</label>
-                            <input type="number" id="inputHoras" placeholder="Ex: 15" min="0" class="w-full bg-white text-gray-900 border-0 rounded-lg text-sm p-3 focus:ring-2 focus:ring-yellow-400 outline-none">
+                            <label class="block text-xs font-bold text-blue-100 uppercase mb-1">Selecionar</label>
+                            <select id="selectGrupo" class="w-full bg-white text-gray-900 border-0 rounded-lg text-sm p-3 focus:ring-2 focus:ring-yellow-400 outline-none cursor-pointer">
+                                <option value="Publicador">Publicador</option>
+                                <option value="Pioneiro Auxiliar">Pioneiro Auxiliar</option>
+                                <option value="Pioneiro Regular">Pioneiro Regular</option>
+                                <option value="Pioneiro Especial">Pioneiro Especial</option>
+                            </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-blue-100 uppercase mb-1">Estudos</label>
+                            <label class="block text-xs font-bold text-blue-100 uppercase mb-1">Estudos (Mês)</label>
                             <input type="number" id="inputEstudos" placeholder="Ex: 2" min="0" class="w-full bg-white text-gray-900 border-0 rounded-lg text-sm p-3 focus:ring-2 focus:ring-yellow-400 outline-none">
+                        </div>
+                    </div>
+
+                    <div id="containerRastreador" class="hidden bg-white/10 p-3 rounded-xl border border-white/20 mt-4 shadow-inner">
+                        <div class="flex justify-between items-center mb-3 border-b border-white/20 pb-2">
+                            <label class="text-xs font-bold text-yellow-300 uppercase flex items-center gap-1">⏱️ Rastreador Diário</label>
+                            <span id="totalHorasPioneiro" class="text-xs font-black bg-yellow-400 text-blue-900 px-2 py-1 rounded-md shadow-sm">Total: 0h</span>
+                        </div>
+                        
+                        <div class="flex gap-2 mb-3">
+                            <input type="number" id="diaTrabalho" placeholder="Dia" min="1" max="31" class="w-16 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 text-center focus:ring-2 focus:ring-yellow-400 outline-none">
+                            <input type="number" id="horasTrabalho" placeholder="Horas" min="1" step="0.5" class="flex-1 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 focus:ring-2 focus:ring-yellow-400 outline-none">
+                            <button id="btnAddHora" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 rounded-lg font-black text-lg transition-transform active:scale-95 shadow-md">+</button>
+                        </div>
+                        
+                        <ul id="listaHorasDiarias" class="space-y-1.5 max-h-32 overflow-y-auto pr-2 text-sm">
+                            <li class="text-blue-200 italic text-center text-xs py-2">Nenhum registro no mês.</li>
+                        </ul>
+                        
+                        <div class="mt-3 text-right">
+                            <button id="btnLimparRastreador" class="text-red-300 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition">Zerar mês atual</button>
                         </div>
                     </div>
                     
                     <button id="btnGerarRelatorio" class="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 text-blue-900 py-3.5 rounded-xl text-sm font-black transition-all shadow-lg transform active:scale-95 flex justify-center items-center gap-2">
-                        🚀 ENVIAR RELATÓRIO OFICIAL
+                        🚀 ENVIAR RELATÓRIO
                     </button>
                 </div>
             </div>
@@ -534,32 +560,122 @@
         };
 
         // ==========================================
-        // LÓGICA DO GERADOR DE RELATÓRIO (INTEGRAÇÃO V2.9)
+        // LÓGICA DO RASTREADOR E INTEGRAÇÃO V2.9
         // ==========================================
-        document.getElementById('btnGerarRelatorio').addEventListener('click', () => {
-            // 1. Coleta os dados digitados
-            const horas = document.getElementById('inputHoras').value.trim() || "0";
-            const estudos = document.getElementById('inputEstudos').value.trim() || "0";
-            
-            // 2. Coleta os dados de Perfil (Nome e Grupo)
-            const nome = encodeURIComponent(window.currentUserNome); // encodeURIComponent garante que espaços virem %20 na URL
-            let grupo = "Publicador"; 
-            
-            // Lógica simples: se quiser aprimorar depois, podemos adicionar "Pioneiro" no painel admin.
-            // Por enquanto, mandamos o papel base.
-            if (window.currentUserPapel === 'responsavel' || window.currentUserPapel === 'publicador') {
-                grupo = encodeURIComponent("Publicador"); 
-                // Nota: O seu index.html de destino deve deixar o usuário alterar o grupo se ele for Pioneiro.
+        const selectGrupo = document.getElementById('selectGrupo');
+        const containerRastreador = document.getElementById('containerRastreador');
+        const listaHorasDiarias = document.getElementById('listaHorasDiarias');
+        const totalHorasPioneiro = document.getElementById('totalHorasPioneiro');
+        let registrosHoras = [];
+
+        // Oculta/Mostra o Rastreador baseado no Select
+        selectGrupo.addEventListener('change', (e) => {
+            if (e.target.value === 'Publicador') {
+                containerRastreador.classList.add('hidden');
+            } else {
+                containerRastreador.classList.remove('hidden');
+            }
+        });
+
+        // Inicializa lendo a memória do navegador atrelada ao e-mail do irmão
+        window.iniciarRastreadorLocal = () => {
+            if (!currentUserEmail) return;
+            const salvos = localStorage.getItem(`horas_${currentUserEmail}`);
+            if (salvos) {
+                registrosHoras = JSON.parse(salvos);
+            } else {
+                registrosHoras = [];
+            }
+            atualizarUIRastreador();
+        };
+
+        // Renderiza a tabela compacta
+        function atualizarUIRastreador() {
+            listaHorasDiarias.innerHTML = '';
+            let total = 0;
+
+            if (registrosHoras.length === 0) {
+                listaHorasDiarias.innerHTML = '<li class="text-blue-200 italic text-center text-xs py-2">Nenhum registro no mês.</li>';
+                totalHorasPioneiro.innerText = 'Total: 0h';
+                return;
             }
 
-            // 3. Monta o Link Inteligente
-            // ⚠️ ATENÇÃO: SUBSTITUA O LINK ABAIXO PELO LINK REAL DO SEU SISTEMA DE RELATÓRIOS
-            const urlBaseDestino = "https://congregacaouirauna.github.io/relatorios/index.html"; 
-            
-            // Adicionado o parâmetro &participou=Sim no final da URL
-            const urlParametrizada = `${urlBaseDestino}?nome=${nome}&grupo=${grupo}&horas=${horas}&estudos=${estudos}&participou=Sim`;
+            // Ordena os dias para ficar bonito na tela (do dia 1 ao 31)
+            registrosHoras.sort((a, b) => a.dia - b.dia);
 
-            // 4. Redireciona o usuário em uma nova aba
+            registrosHoras.forEach((reg, index) => {
+                total += reg.horas;
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-black/20 px-3 py-2 rounded-lg text-blue-50 border border-white/5";
+                li.innerHTML = `
+                    <span>Dia <strong class="text-yellow-300 ml-1 mr-2">${reg.dia}</strong> ➔ ${reg.horas}h</span>
+                    <button type="button" class="text-red-400 hover:text-red-300 font-bold text-xs" onclick="window.removerHora(${index})">❌</button>
+                `;
+                listaHorasDiarias.appendChild(li);
+            });
+            
+            totalHorasPioneiro.innerText = `Total: ${total}h`;
+            // Salva na memória do navegador
+            if(currentUserEmail) localStorage.setItem(`horas_${currentUserEmail}`, JSON.stringify(registrosHoras));
+        }
+
+        // Adiciona um dia de trabalho
+        document.getElementById('btnAddHora').addEventListener('click', () => {
+            const diaInput = document.getElementById('diaTrabalho');
+            const horasInput = document.getElementById('horasTrabalho');
+            const dia = parseInt(diaInput.value);
+            const horas = parseFloat(horasInput.value); // Aceita números quebrados como 1.5
+
+            if (!dia || dia < 1 || dia > 31 || !horas || horas <= 0) {
+                alert("Informe um dia válido (1 a 31) e uma quantidade de horas.");
+                return;
+            }
+
+            registrosHoras.push({ dia, horas });
+            atualizarUIRastreador();
+            
+            // Limpa os campos e devolve o cursor para facilitar
+            diaInput.value = '';
+            horasInput.value = '';
+            diaInput.focus();
+        });
+
+        // Remove um dia de trabalho
+        window.removerHora = (index) => {
+            registrosHoras.splice(index, 1);
+            atualizarUIRastreador();
+        };
+
+        // Limpa o mês inteiro
+        document.getElementById('btnLimparRastreador').addEventListener('click', () => {
+            if(confirm("Tem certeza que deseja zerar TODAS as horas deste mês? Isso não pode ser desfeito.")) {
+                registrosHoras = [];
+                atualizarUIRastreador();
+            }
+        });
+
+        // O Botão de Integração
+        document.getElementById('btnGerarRelatorio').addEventListener('click', () => {
+            const grupo = selectGrupo.value;
+            const estudos = document.getElementById('inputEstudos').value.trim() || "0";
+            
+            let horas = "0";
+            
+            // Se for Pioneiro, injeta a soma exata da tabela. Se for Publicador, envia 0 automaticamente.
+            if (grupo !== 'Publicador') {
+                const soma = registrosHoras.reduce((acc, curr) => acc + curr.horas, 0);
+                horas = soma.toString();
+                if (soma === 0) {
+                    if(!confirm("Você selecionou Pioneiro, mas o rastreador está com 0 horas. Deseja enviar assim mesmo?")) return;
+                }
+            }
+
+            const nome = encodeURIComponent(window.currentUserNome); 
+            const grupoEncode = encodeURIComponent(grupo); 
+            
+            const urlBaseDestino = "https://congregacaouirauna.github.io/relatorios/index.html"; 
+            const urlParametrizada = `${urlBaseDestino}?nome=${nome}&grupo=${grupoEncode}&horas=${horas}&estudos=${estudos}&participou=Sim`;
+
             window.open(urlParametrizada, '_blank');
         });
         
