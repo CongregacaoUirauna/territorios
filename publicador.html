@@ -210,6 +210,9 @@
 
                     // Todos (exceto Admin) iniciam a escuta do Mural
                     iniciarEscutaDeAvisos(dados.papel, user.email);
+                    
+                    // Inicia o rastreador local de horas do Pioneiro
+                    window.iniciarRastreadorLocal();
                 } else {
                     // Sem perfil? Bloqueia.
                     auth.signOut();
