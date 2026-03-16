@@ -666,18 +666,36 @@
                 btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
 
                 const querySnapshot = await getDocs(collection(db, "territorios"));
-                let csvContent = "Numero,Nome,Status,Responsavel,Ultima Nota\n";
                 
+                // Usando ponto e vírgula (;) para o Excel em português dividir as colunas corretamente
+                let csvContent = "Território Nº;Última Data Concluída;Designado 1;Data Designação 1;Data Conclusão 1\n";
+                
+                // O mesmo Tradutor Universal de Datas, agora para o Excel
+                const formatarDataCSV = (dataBase) => {
+                    if (!dataBase) return '';
+                    if (typeof dataBase.toDate === 'function') return dataBase.toDate().toLocaleDateString('pt-BR');
+                    const d = new Date(dataBase);
+                    if (!isNaN(d)) {
+                        d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+                        return d.toLocaleDateString('pt-BR');
+                    }
+                    return dataBase; 
+                };
+
                 querySnapshot.forEach((doc) => {
                     const t = doc.data();
+                    
                     const numero = t.numero || '';
-                    const nome = (t.nome || '').replace(/,/g, ''); 
-                    const status = t.status || '';
-                    const responsavel = t.responsavelAtual || 'Nenhum';
-                    const nota = (t.notaPausa || '').replace(/,/g, ' ').replace(/\n/g, ' ');
-                    csvContent += `${numero},${nome},${status},${responsavel},${nota}\n`;
+                    const ultimaData = formatarDataCSV(t.ultimaConclusao);
+                    const designado = t.responsavelAtual || '';
+                    const dataDesignacao = formatarDataCSV(t.dataInicio);
+                    const dataConclusao = formatarDataCSV(t.ultimaConclusao); 
+
+                    // Monta a linha com o ponto e vírgula separando cada célula
+                    csvContent += `${numero};${ultimaData};${designado};${dataDesignacao};${dataConclusao}\n`;
                 });
 
+                // O \uFEFF garante que o Excel entenda os acentos (UTF-8)
                 const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
