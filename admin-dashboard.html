@@ -665,12 +665,21 @@
                 const btn = document.getElementById('btnExportarCSV');
                 btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
 
+                // 1. CRIANDO O DICIONÁRIO DE NOMES
+                // Busca todos os usuários e mapeia: { "email@gmail.com": "Glebston Lima" }
+                const usuariosSnapshot = await getDocs(collection(db, "usuarios"));
+                const mapaNomes = {};
+                usuariosSnapshot.forEach(docSnap => {
+                    const u = docSnap.data();
+                    if (u.email) {
+                        mapaNomes[u.email] = u.nome || u.email; // Se não tiver nome, usa o email por segurança
+                    }
+                });
+
+                // 2. BUSCANDO OS TERRITÓRIOS
                 const querySnapshot = await getDocs(collection(db, "territorios"));
-                
-                // Usando ponto e vírgula (;) para o Excel em português dividir as colunas corretamente
                 let csvContent = "Território Nº;Última Data Concluída;Designado 1;Data Designação 1;Data Conclusão 1\n";
                 
-                // O mesmo Tradutor Universal de Datas, agora para o Excel
                 const formatarDataCSV = (dataBase) => {
                     if (!dataBase) return '';
                     if (typeof dataBase.toDate === 'function') return dataBase.toDate().toLocaleDateString('pt-BR');
@@ -687,15 +696,20 @@
                     
                     const numero = t.numero || '';
                     const ultimaData = formatarDataCSV(t.ultimaConclusao);
-                    const designado = t.responsavelAtual || '';
+                    
+                    // 3. A TRADUÇÃO: Pega o e-mail e busca o Nome Oficial no dicionário
+                    const emailResponsavel = t.responsavelAtual;
+                    let designado = '';
+                    if (emailResponsavel) {
+                        designado = mapaNomes[emailResponsavel] || emailResponsavel; 
+                    }
+
                     const dataDesignacao = formatarDataCSV(t.dataInicio);
                     const dataConclusao = formatarDataCSV(t.ultimaConclusao); 
 
-                    // Monta a linha com o ponto e vírgula separando cada célula
                     csvContent += `${numero};${ultimaData};${designado};${dataDesignacao};${dataConclusao}\n`;
                 });
 
-                // O \uFEFF garante que o Excel entenda os acentos (UTF-8)
                 const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
@@ -704,6 +718,7 @@
                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
             } catch (error) {
                 alert("Erro ao gerar o CSV.");
+                console.error(error);
             } finally {
                 const btn = document.getElementById('btnExportarCSV');
                 btn.innerHTML = '📄 Exportar CSV'; btn.disabled = false;
