@@ -312,9 +312,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        // Importação ATUALIZADA com addDoc
-        import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+        // Importação CORRIGIDA com getDoc incluído
+        import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
         const firebaseConfig = {
             apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
             authDomain: "territorios-e9dd4.firebaseapp.com",
