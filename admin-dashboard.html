@@ -283,7 +283,8 @@
                     </form>
                 </div>
             </div>
-            <div id="modalEditarAviso" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+        </div>
+        <div id="modalEditarAviso" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
             <div class="relative p-6 border w-full max-w-lg shadow-xl rounded-lg bg-white">
                 <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Editar Aviso</h3>
                 <form id="formEditarAviso" class="space-y-4">
@@ -300,12 +301,11 @@
                         Nota: Para tabelas de programação, a edição é permitida apenas no Título. Para mudar horários, recomendamos republicar o aviso.
                     </p>
                     <div class="flex justify-end gap-3 pt-4 border-t">
-                        <button type="button" onclick="document.getElementById('modalEditarAviso').classList.add('hidden')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">Cancelar</button>
+                        <button type="button" onclick="document.getElementById('modalEditarAviso').classList.add('hidden'); document.getElementById('modalEditarAviso').style.display='none';" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">Cancelar</button>
                         <button type="submit" id="btnSalvarEditAviso" class="px-4 py-2 bg-blue-600 text-white rounded-md font-bold shadow-sm">Salvar Alterações</button>
                     </div>
                 </form>
             </div>
-        </div>
         </div>
     </main>
 
@@ -898,25 +898,35 @@
 
         // --- FUNÇÃO: ABRIR EDIÇÃO DE AVISO ---
         window.abrirEditarAviso = async (id) => {
-            const docRef = doc(db, "anuncios", id);
-            const snap = await getDoc(docRef);
-            if (snap.exists()) {
-                const a = snap.data();
-                document.getElementById('editAvisoId').value = id;
-                document.getElementById('editAvisoTitulo').value = a.titulo;
+            try {
+                const docRef = doc(db, "anuncios", id);
+                const snap = await getDoc(docRef);
                 
-                const painelTexto = document.getElementById('painelEditTexto');
-                const msgTabela = document.getElementById('msgEditTabela');
+                if (snap.exists()) {
+                    const a = snap.data();
+                    const modal = document.getElementById('modalEditarAviso');
+                    
+                    document.getElementById('editAvisoId').value = id;
+                    document.getElementById('editAvisoTitulo').value = a.titulo || "";
+                    
+                    const painelTexto = document.getElementById('painelEditTexto');
+                    const msgTabela = document.getElementById('msgEditTabela');
 
-                if (a.tipo === 'texto') {
-                    painelTexto.classList.remove('hidden');
-                    msgTabela.classList.add('hidden');
-                    document.getElementById('editAvisoConteudo').value = a.conteudo;
-                } else {
-                    painelTexto.classList.add('hidden'); // Oculta campo de texto se for tabela
-                    msgTabela.classList.remove('hidden');
+                    if (a.tipo === 'texto') {
+                        painelTexto.style.display = 'block';
+                        msgTabela.style.display = 'none';
+                        document.getElementById('editAvisoConteudo').value = a.conteudo || "";
+                    } else {
+                        painelTexto.style.display = 'none';
+                        msgTabela.style.display = 'block';
+                    }
+                    
+                    modal.classList.remove('hidden');
+                    modal.style.display = 'flex'; // Força a exibição como Flexbox
                 }
-                document.getElementById('modalEditarAviso').classList.remove('hidden');
+            } catch (error) {
+                console.error("Erro ao abrir edição:", error);
+                alert("Erro ao carregar o aviso para edição.");
             }
         };
 
@@ -924,6 +934,8 @@
         document.getElementById('formEditarAviso').addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('editAvisoId').value;
+            if (!id) return;
+
             const btn = document.getElementById('btnSalvarEditAviso');
             btn.innerText = "Salvando..."; btn.disabled = true;
 
@@ -931,49 +943,53 @@
                 titulo: document.getElementById('editAvisoTitulo').value.trim()
             };
 
-            // Se for do tipo texto, atualiza o conteúdo também
-            const campoTexto = document.getElementById('editAvisoConteudo');
-            if (!document.getElementById('painelEditTexto').classList.contains('hidden')) {
-                updateData.conteudo = campoTexto.value.trim();
+            const painelTexto = document.getElementById('painelEditTexto');
+            if (painelTexto.style.display !== 'none') {
+                updateData.conteudo = document.getElementById('editAvisoConteudo').value.trim();
             }
 
             try {
                 await updateDoc(doc(db, "anuncios", id), updateData);
                 document.getElementById('modalEditarAviso').classList.add('hidden');
+                document.getElementById('modalEditarAviso').style.display = 'none';
             } catch (error) {
-                alert("Erro ao atualizar aviso.");
+                console.error("Erro ao salvar:", error);
+                alert("Erro ao salvar as alterações.");
             } finally {
                 btn.innerText = "Salvar Alterações"; btn.disabled = false;
             }
         });
 
-        // --- FUNÇÃO: COMPARTILHAR PARA WHATSAPP (TEXTO FORMATADO) ---
+        // --- FUNÇÃO: COMPARTILHAR PARA WHATSAPP ---
         window.compartilharAviso = async (id) => {
-            const docRef = doc(db, "anuncios", id);
-            const snap = await getDoc(docRef);
-            if (snap.exists()) {
-                const a = snap.data();
-                let mensagem = `📢 *${a.titulo.toUpperCase()}*\n\n`;
+            try {
+                const docRef = doc(db, "anuncios", id);
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    const a = snap.data();
+                    let mensagem = `📢 *${a.titulo.toUpperCase()}*\n\n`;
 
-                if (a.tipo === 'texto') {
-                    mensagem += a.conteudo;
-                } else {
-                    mensagem += `📅 *PROGRAMAÇÃO:* \n`;
-                    a.conteudo.forEach(linha => {
-                        mensagem += `\n🔹 *${linha.dia}* (${linha.hora})\n📍 ${linha.local}\n⚠ Dir: ${linha.dirigente}\n`;
-                    });
+                    if (a.tipo === 'texto') {
+                        mensagem += a.conteudo;
+                    } else {
+                        mensagem += `📅 *PROGRAMAÇÃO:* \n`;
+                        a.conteudo.forEach(linha => {
+                            mensagem += `\n🔹 *${linha.dia}* (${linha.hora})\n📍 ${linha.local}\n⚠ Dir: ${linha.dirigente}\n`;
+                        });
+                    }
+
+                    mensagem += `\n\n🌐 _Acesse o Portal:_ https://congregacaouirauna.github.io/territorios/publicador.html`;
+
+                    if (navigator.share) {
+                        navigator.share({ title: a.titulo, text: mensagem });
+                    } else {
+                        navigator.clipboard.writeText(mensagem).then(() => {
+                            alert("Texto formatado copiado! Basta colar no WhatsApp.");
+                        });
+                    }
                 }
-
-                mensagem += `\n\n🌐 _Acesse o Portal:_ https://congregacaouirauna.github.io/territorios/publicador.html`;
-
-                // Tenta usar a API de compartilhamento do sistema (Mobile) ou copia para o clipboard
-                if (navigator.share) {
-                    navigator.share({ title: a.titulo, text: mensagem });
-                } else {
-                    navigator.clipboard.writeText(mensagem).then(() => {
-                        alert("Texto formatado copiado! Basta colar no WhatsApp.");
-                    });
-                }
+            } catch (error) {
+                console.error("Erro ao compartilhar:", error);
             }
         };
         
