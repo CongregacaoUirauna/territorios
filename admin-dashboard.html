@@ -283,6 +283,29 @@
                     </form>
                 </div>
             </div>
+            <div id="modalEditarAviso" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+            <div class="relative p-6 border w-full max-w-lg shadow-xl rounded-lg bg-white">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Editar Aviso</h3>
+                <form id="formEditarAviso" class="space-y-4">
+                    <input type="hidden" id="editAvisoId">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Título</label>
+                        <input type="text" id="editAvisoTitulo" required class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+                    </div>
+                    <div id="painelEditTexto">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Conteúdo</label>
+                        <textarea id="editAvisoConteudo" rows="5" class="block w-full border border-gray-300 rounded-md p-2 text-sm"></textarea>
+                    </div>
+                    <p id="msgEditTabela" class="hidden text-xs text-orange-600 font-medium italic bg-orange-50 p-2 rounded">
+                        Nota: Para tabelas de programação, a edição é permitida apenas no Título. Para mudar horários, recomendamos republicar o aviso.
+                    </p>
+                    <div class="flex justify-end gap-3 pt-4 border-t">
+                        <button type="button" onclick="document.getElementById('modalEditarAviso').classList.add('hidden')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">Cancelar</button>
+                        <button type="submit" id="btnSalvarEditAviso" class="px-4 py-2 bg-blue-600 text-white rounded-md font-bold shadow-sm">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
         </div>
     </main>
 
@@ -517,9 +540,19 @@
                         <div class="flex-1 mb-4">
                             ${resumoConteudo}
                         </div>
-                        <button onclick="window.apagarAviso('${id}')" class="text-red-600 hover:text-red-800 text-xs font-bold border border-red-200 hover:bg-red-50 py-1.5 px-3 rounded transition self-end">
-                            🗑️ Apagar Aviso
-                        </button>
+                        <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 gap-2">
+                            <button onclick="window.compartilharAviso('${id}')" class="text-blue-600 hover:text-blue-800 text-xs font-bold px-2 py-1 rounded border border-blue-200 hover:bg-blue-50 transition">
+                                📱 Enviar
+                            </button>
+                            <div class="flex gap-2">
+                                <button onclick="window.abrirEditarAviso('${id}')" class="text-orange-600 hover:text-orange-800 text-xs font-bold px-2 py-1 rounded border border-orange-200 hover:bg-orange-50 transition">
+                                    ✏️ Editar
+                                </button>
+                                <button onclick="window.apagarAviso('${id}')" class="text-red-600 hover:text-red-800 text-xs font-bold px-2 py-1 rounded border border-red-200 hover:bg-red-50 transition">
+                                    🗑️ Apagar
+                                </button>
+                            </div>
+                        </div>
                     `;
                     gridAvisos.appendChild(card);
                 });
@@ -862,6 +895,88 @@
                 await deleteDoc(doc(db, "autorizacoes", emailId));
             }
         };
+
+        // --- FUNÇÃO: ABRIR EDIÇÃO DE AVISO ---
+        window.abrirEditarAviso = async (id) => {
+            const docRef = doc(db, "anuncios", id);
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+                const a = snap.data();
+                document.getElementById('editAvisoId').value = id;
+                document.getElementById('editAvisoTitulo').value = a.titulo;
+                
+                const painelTexto = document.getElementById('painelEditTexto');
+                const msgTabela = document.getElementById('msgEditTabela');
+
+                if (a.tipo === 'texto') {
+                    painelTexto.classList.remove('hidden');
+                    msgTabela.classList.add('hidden');
+                    document.getElementById('editAvisoConteudo').value = a.conteudo;
+                } else {
+                    painelTexto.classList.add('hidden'); // Oculta campo de texto se for tabela
+                    msgTabela.classList.remove('hidden');
+                }
+                document.getElementById('modalEditarAviso').classList.remove('hidden');
+            }
+        };
+
+        // Salvar Edição
+        document.getElementById('formEditarAviso').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editAvisoId').value;
+            const btn = document.getElementById('btnSalvarEditAviso');
+            btn.innerText = "Salvando..."; btn.disabled = true;
+
+            const updateData = {
+                titulo: document.getElementById('editAvisoTitulo').value.trim()
+            };
+
+            // Se for do tipo texto, atualiza o conteúdo também
+            const campoTexto = document.getElementById('editAvisoConteudo');
+            if (!document.getElementById('painelEditTexto').classList.contains('hidden')) {
+                updateData.conteudo = campoTexto.value.trim();
+            }
+
+            try {
+                await updateDoc(doc(db, "anuncios", id), updateData);
+                document.getElementById('modalEditarAviso').classList.add('hidden');
+            } catch (error) {
+                alert("Erro ao atualizar aviso.");
+            } finally {
+                btn.innerText = "Salvar Alterações"; btn.disabled = false;
+            }
+        });
+
+        // --- FUNÇÃO: COMPARTILHAR PARA WHATSAPP (TEXTO FORMATADO) ---
+        window.compartilharAviso = async (id) => {
+            const docRef = doc(db, "anuncios", id);
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+                const a = snap.data();
+                let mensagem = `📢 *${a.titulo.toUpperCase()}*\n\n`;
+
+                if (a.tipo === 'texto') {
+                    mensagem += a.conteudo;
+                } else {
+                    mensagem += `📅 *PROGRAMAÇÃO:* \n`;
+                    a.conteudo.forEach(linha => {
+                        mensagem += `\n🔹 *${linha.dia}* (${linha.hora})\n📍 ${linha.local}\n⚠ Dir: ${linha.dirigente}\n`;
+                    });
+                }
+
+                mensagem += `\n\n🌐 _Acesse o Portal:_ https://congregacaouirauna.github.io/territorios/publicador.html`;
+
+                // Tenta usar a API de compartilhamento do sistema (Mobile) ou copia para o clipboard
+                if (navigator.share) {
+                    navigator.share({ title: a.titulo, text: mensagem });
+                } else {
+                    navigator.clipboard.writeText(mensagem).then(() => {
+                        alert("Texto formatado copiado! Basta colar no WhatsApp.");
+                    });
+                }
+            }
+        };
+        
     </script>
 </body>
 </html>
