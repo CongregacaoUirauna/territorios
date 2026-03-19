@@ -95,70 +95,70 @@
                         let contador = 0;
 
                         dados.forEach(row => {
-                            const numRaw = row['Território Nº'];
-                            if (!numRaw) return; // Pula linhas vazias no final
+                            // 1. FLEXIBILIDADE DE COLUNAS: Tenta encontrar o número do território em vários nomes possíveis
+                            const numRaw = row['Território Nº'] || row['Numero'] || row['nº'] || row['Nº'];
+                            if (!numRaw) return; 
 
-                            // 1. Formata o Número (ex: 1 vira "01")
                             const numeroFormatado = String(numRaw).padStart(2, '0');
                             const idDoc = `T${numeroFormatado}`;
                             
-                            // 2. Busca o Nome no Dicionário
-                            const nome = nomesTerritorios[parseInt(numRaw)] || "Sem nome cadastrado";
+                            // 2. PRIORIDADE AO NOME DO ARQUIVO: Se o CSV tiver a coluna 'Nome', usamos ela. 
+                            // Caso contrário, usamos o Dicionário fixo como Plano B.
+                            const nomeDoArquivo = row['Nome'] || row['Descrição'] || row['Descricao'];
+                            const nome = nomeDoArquivo ? nomeDoArquivo.trim() : (nomesTerritorios[parseInt(numRaw)] || "Sem nome cadastrado");
 
-                            // 3. Lógica de Status e Responsável (Lê de trás para frente no histórico)
+                            // 3. LÓGICA DE STATUS E RESPONSÁVEL (Suporta os dois formatos de CSV)
                             let status = "Disponível";
                             let responsavel = null;
 
-                            for (let i = 5; i >= 1; i--) {
-                                const designado = row[`Designado ${i}`];
-                                const dataConclusao = row[`Data Conclusão ${i}`];
-
-                                if (designado && designado.trim() !== "") {
-                                    if (!dataConclusao || dataConclusao.trim() === "") {
-                                        // Achou um designado sem data de conclusão
-                                        status = "Em andamento";
-                                        responsavel = designado.trim();
-                                        break; 
-                                    } else {
-                                        // O último a pegar já concluiu. O território está livre.
-                                        break;
+                            // Se o arquivo tiver a coluna direta 'Status' e 'Responsavel', usamos elas (Formato Novo)
+                            if (row['Status'] && row['Responsavel']) {
+                                status = row['Status'];
+                                responsavel = row['Responsavel'] !== 'Nenhum' ? row['Responsavel'] : null;
+                            } else {
+                                // Caso contrário, usa a lógica histórica (Formato Antigo do Sheets)
+                                for (let i = 5; i >= 1; i--) {
+                                    const designado = row[`Designado ${i}`];
+                                    const dataConclusao = row[`Data Conclusão ${i}`];
+                                    if (designado && designado.trim() !== "") {
+                                        if (!dataConclusao || dataConclusao.trim() === "") {
+                                            status = "Em andamento";
+                                            responsavel = designado.trim();
+                                            break; 
+                                        } else { break; }
                                     }
                                 }
                             }
 
-                            // 4. Última Conclusão
-                            const ultimaConc = row['Última Data Concluída'];
+                            // 4. ÚLTIMA CONCLUSÃO: Tenta vários nomes de coluna possíveis
+                            const ultimaConc = row['Última Data Concluída'] || row['Ultima Nota'] || row['Conclusão'];
                             const ultimaConclusaoFinal = (ultimaConc && ultimaConc.trim() !== "") ? ultimaConc.trim() : null;
 
-                            // 5. Monta o Objeto Final para o Firestore
+                            // 5. GRAVAÇÃO SEGURA (MERGE): Usamos { merge: true } para NÃO APAGAR o que você já preencheu manualmente.
+                            // Se o território já existir, ele só vai atualizar o que mudou no CSV.
                             const territorioRef = doc(db, "territorios", idDoc);
                             batch.set(territorioRef, {
                                 numero: numeroFormatado,
                                 nome: nome,
-                                mapaUrl: "", // A ser preenchido futuramente
                                 status: status,
                                 responsavelAtual: responsavel,
-                                notaPausa: "",
                                 ultimaConclusao: ultimaConclusaoFinal,
-                                criadoEm: new Date().toISOString()
-                            });
+                                atualizadoEm: new Date().toISOString()
+                            }, { merge: true });
 
-                            logMsg(`Preparando [${idDoc}]: Status -> ${status} | Resp -> ${responsavel || 'Nenhum'}`);
+                            logMsg(`Preparado [${idDoc}]: ${nome} | Status -> ${status}`);
                             contador++;
                         });
 
-                        logMsg(`Enviando ${contador} territórios para o Firestore de uma só vez (Batch Commit)...`);
-                        
-                        // Executa a transação no banco
+                        logMsg(`Enviando ${contador} territórios para o Firestore...`);
                         await batch.commit();
                         
-                        logMsg("✅ MIGRAÇÃO CONCLUÍDA COM SUCESSO! Você já pode abrir o Dashboard.");
+                        logMsg("✅ MIGRAÇÃO CONCLUÍDA! Os dados foram atualizados sem apagar suas edições manuais.");
                         btnProcessar.innerText = "Migração Finalizada";
 
                     } catch (error) {
                         console.error(error);
-                        logMsg(`❌ ERRO FATAL: ${error.message}`);
-                        logMsg("Verifique as regras do Firestore ou se você é de fato Admin.");
+                        logMsg(`❌ ERRO: ${error.message}`);
                         btnProcessar.disabled = false;
                         btnProcessar.innerText = "Tentar Novamente";
                     }
