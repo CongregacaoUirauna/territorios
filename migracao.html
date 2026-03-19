@@ -88,72 +88,84 @@
                 skipEmptyLines: true,
                 complete: async function(results) {
                     const dados = results.data;
-                    logMsg(`CSV lido com sucesso. Encontradas ${dados.length} linhas.`);
+                    logMsg(`Iniciando motor de análise cronológica em ${dados.length} territórios...`);
                     
                     try {
                         const batch = writeBatch(db);
                         let contador = 0;
 
+                        // Função Auxiliar: Transforma "27/01/2026" em um objeto de Data real
+                        const parseDataBR = (str) => {
+                            if (!str || typeof str !== 'string' || !str.includes('/')) return null;
+                            const pts = str.trim().split('/');
+                            if (pts.length !== 3) return null;
+                            const d = parseInt(pts[0]), m = parseInt(pts[1]), y = parseInt(pts[2]);
+                            return new Date(y, m - 1, d);
+                        };
+
                         dados.forEach(row => {
-                            // 1. FLEXIBILIDADE DE COLUNAS: Tenta encontrar o número do território em vários nomes possíveis
-                            const numRaw = row['Território Nº'] || row['Numero'] || row['nº'] || row['Nº'];
+                            const numRaw = row['Território Nº'] || row['Numero'] || row['nº'];
                             if (!numRaw) return; 
 
                             const numeroFormatado = String(numRaw).padStart(2, '0');
                             const idDoc = `T${numeroFormatado}`;
                             
-                            // 2. PRIORIDADE AO NOME DO ARQUIVO: Se o CSV tiver a coluna 'Nome', usamos ela. 
-                            // Caso contrário, usamos o Dicionário fixo como Plano B.
-                            const nomeDoArquivo = row['Nome'] || row['Descrição'] || row['Descricao'];
-                            const nome = nomeDoArquivo ? nomeDoArquivo.trim() : (nomesTerritorios[parseInt(numRaw)] || "Sem nome cadastrado");
+                            // 1. Busca o nome oficial (Prioriza o CSV, usa Dicionário como fallback)
+                            const nomeCSV = row['Nome'] || row['Descrição'];
+                            const nome = nomeCSV ? nomeCSV.trim() : (nomesTerritorios[parseInt(numRaw)] || "Sem nome");
 
-                            // 3. LÓGICA DE STATUS E RESPONSÁVEL (Suporta os dois formatos de CSV)
+                            // 2. BUSCA DA VERDADE CRONOLÓGICA
                             let status = "Disponível";
                             let responsavel = null;
+                            let dataInicioFinal = null;
+                            let ultimaConclusaoFinal = parseDataBR(row['Última Data Concluída']);
 
-                            // Se o arquivo tiver a coluna direta 'Status' e 'Responsavel', usamos elas (Formato Novo)
-                            if (row['Status'] && row['Responsavel']) {
-                                status = row['Status'];
-                                responsavel = row['Responsavel'] !== 'Nenhum' ? row['Responsavel'] : null;
-                            } else {
-                                // Caso contrário, usa a lógica histórica (Formato Antigo do Sheets)
-                                for (let i = 5; i >= 1; i--) {
-                                    const designado = row[`Designado ${i}`];
-                                    const dataConclusao = row[`Data Conclusão ${i}`];
-                                    if (designado && designado.trim() !== "") {
-                                        if (!dataConclusao || dataConclusao.trim() === "") {
-                                            status = "Em andamento";
-                                            responsavel = designado.trim();
-                                            break; 
-                                        } else { break; }
+                            // Varre todos os 5 slots para encontrar o estado mais atual
+                            for (let i = 1; i <= 5; i++) {
+                                const designado = row[`Designado ${i}`];
+                                const dInicioStr = row[`Data Designação ${i}`];
+                                const dFimStr = row[`Data Conclusão ${i}`];
+
+                                if (designado && designado.trim() !== "") {
+                                    const dInicioObj = parseDataBR(dInicioStr);
+                                    const dFimObj = parseDataBR(dFimStr);
+
+                                    // Se tem designado mas NÃO tem data de conclusão, este é o responsável atual!
+                                    if (!dFimObj) {
+                                        status = "Em andamento";
+                                        responsavel = designado.trim();
+                                        dataInicioFinal = dInicioObj;
+                                    } 
+                                    
+                                    // Compara as datas de conclusão para pegar a mais recente de todas
+                                    if (dFimObj) {
+                                        if (!ultimaConclusaoFinal || dFimObj > ultimaConclusaoFinal) {
+                                            ultimaConclusaoFinal = dFimObj;
+                                        }
                                     }
                                 }
                             }
 
-                            // 4. ÚLTIMA CONCLUSÃO: Tenta vários nomes de coluna possíveis
-                            const ultimaConc = row['Última Data Concluída'] || row['Ultima Nota'] || row['Conclusão'];
-                            const ultimaConclusaoFinal = (ultimaConc && ultimaConc.trim() !== "") ? ultimaConc.trim() : null;
-
-                            // 5. GRAVAÇÃO SEGURA (MERGE): Usamos { merge: true } para NÃO APAGAR o que você já preencheu manualmente.
-                            // Se o território já existir, ele só vai atualizar o que mudou no CSV.
+                            // 3. Monta o Documento Final para o Firestore
                             const territorioRef = doc(db, "territorios", idDoc);
                             batch.set(territorioRef, {
                                 numero: numeroFormatado,
                                 nome: nome,
                                 status: status,
                                 responsavelAtual: responsavel,
-                                ultimaConclusao: ultimaConclusaoFinal,
+                                dataInicio: dataInicioFinal, // Agora é um objeto Date (Timestamp)
+                                ultimaConclusao: ultimaConclusaoFinal, // Agora é um objeto Date (Timestamp)
                                 atualizadoEm: new Date().toISOString()
                             }, { merge: true });
 
-                            logMsg(`Preparado [${idDoc}]: ${nome} | Status -> ${status}`);
+                            logMsg(`Sincronizado [${idDoc}]: Conclusão: ${ultimaConclusaoFinal ? ultimaConclusaoFinal.toLocaleDateString('pt-BR') : 'Nova'} | Status: ${status}`);
                             contador++;
                         });
 
-                        logMsg(`Enviando ${contador} territórios para o Firestore...`);
+                        logMsg(`Enviando ${contador} territórios com datas validadas...`);
                         await batch.commit();
                         
-                        logMsg("✅ MIGRAÇÃO CONCLUÍDA! Os dados foram atualizados sem apagar suas edições manuais.");
+                        logMsg("✅ SUCESSO! A inteligência cronológica corrigiu as disparidades.");
                         btnProcessar.innerText = "Migração Finalizada";
 
                     } catch (error) {
