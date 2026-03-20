@@ -94,50 +94,65 @@
                         const batch = writeBatch(db);
                         let contador = 0;
 
-                        // Função Auxiliar: Transforma "27/01/2026" em um objeto de Data real
+                        // NOVO TRADUTOR BLINDADO: Evita bug de fuso horário e padroniza para ISO string
                         const parseDataBR = (str) => {
-                            if (!str || typeof str !== 'string' || !str.includes('/')) return null;
-                            const pts = str.trim().split('/');
+                            if (!str) return null;
+                            const limpo = String(str).trim();
+                            const separador = limpo.includes('/') ? '/' : (limpo.includes('-') ? '-' : null);
+                            if (!separador) return null;
+                            
+                            const pts = limpo.split(separador);
                             if (pts.length !== 3) return null;
-                            const d = parseInt(pts[0]), m = parseInt(pts[1]), y = parseInt(pts[2]);
-                            return new Date(y, m - 1, d);
+                            
+                            const d = parseInt(pts[0], 10), m = parseInt(pts[1], 10), y = parseInt(pts[2], 10);
+                            if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+
+                            // 12:00 UTC garante que o fuso do Brasil não roube 1 dia da data!
+                            const dataObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+                            return dataObj.toISOString(); 
+                        };
+
+                        // Localizador avançado de colunas (Ignora acentos e espaços invisíveis do CSV)
+                        const lerColuna = (linha, nomeExato) => {
+                            const chave = Object.keys(linha).find(k => k.trim().toLowerCase() === nomeExato.toLowerCase() || k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === nomeExato.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
+                            return chave ? linha[chave] : null;
                         };
 
                         dados.forEach(row => {
-                            const numRaw = row['Território Nº'] || row['Numero'] || row['nº'];
+                            const numRaw = lerColuna(row, 'Território Nº') || lerColuna(row, 'Numero') || lerColuna(row, 'nº');
                             if (!numRaw) return; 
 
                             const numeroFormatado = String(numRaw).padStart(2, '0');
                             const idDoc = `T${numeroFormatado}`;
                             
                             // 1. Busca o nome oficial (Prioriza o CSV, usa Dicionário como fallback)
-                            const nomeCSV = row['Nome'] || row['Descrição'];
-                            const nome = nomeCSV ? nomeCSV.trim() : (nomesTerritorios[parseInt(numRaw)] || "Sem nome");
+                            const nomeCSV = lerColuna(row, 'Nome') || lerColuna(row, 'Descrição');
+                            const nome = nomeCSV ? String(nomeCSV).trim() : (nomesTerritorios[parseInt(numRaw)] || "Sem nome");
 
                             // 2. BUSCA DA VERDADE CRONOLÓGICA
                             let status = "Disponível";
                             let responsavel = null;
                             let dataInicioFinal = null;
-                            let ultimaConclusaoFinal = parseDataBR(row['Última Data Concluída']);
+                            let ultimaConclusaoFinal = parseDataBR(lerColuna(row, 'Última Data Concluída'));
 
                             // Varre todos os 5 slots para encontrar o estado mais atual
                             for (let i = 1; i <= 5; i++) {
-                                const designado = row[`Designado ${i}`];
-                                const dInicioStr = row[`Data Designação ${i}`];
-                                const dFimStr = row[`Data Conclusão ${i}`];
+                                const designado = lerColuna(row, `Designado ${i}`);
+                                const dInicioStr = lerColuna(row, `Data Designação ${i}`);
+                                const dFimStr = lerColuna(row, `Data Conclusão ${i}`);
 
-                                if (designado && designado.trim() !== "") {
+                                if (designado && String(designado).trim() !== "") {
                                     const dInicioObj = parseDataBR(dInicioStr);
                                     const dFimObj = parseDataBR(dFimStr);
 
                                     // Se tem designado mas NÃO tem data de conclusão, este é o responsável atual!
                                     if (!dFimObj) {
                                         status = "Em andamento";
-                                        responsavel = designado.trim();
+                                        responsavel = String(designado).trim();
                                         dataInicioFinal = dInicioObj;
                                     } 
                                     
-                                    // Compara as datas de conclusão para pegar a mais recente de todas
+                                    // Compara as datas (como agora geramos padrão ISO, a matemática não falha)
                                     if (dFimObj) {
                                         if (!ultimaConclusaoFinal || dFimObj > ultimaConclusaoFinal) {
                                             ultimaConclusaoFinal = dFimObj;
