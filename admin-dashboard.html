@@ -296,10 +296,17 @@
                             <label class="block text-sm font-medium text-gray-700">Nome ou Descrição</label>
                             <input type="text" id="editNomeTerritorio" required class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
-                        <div>
+                       <div>
                             <label class="block text-sm font-medium text-gray-700">Link do Google My Maps</label>
                             <input type="url" id="editLinkMapa" placeholder="Cole o link aqui..." class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
+                        
+                        <div class="pt-2">
+                            <label class="block text-sm font-bold text-gray-700">Ajuste Manual: Última Conclusão</label>
+                            <input type="date" id="editDataConclusao" class="mt-1 block w-full border border-gray-300 rounded-md p-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-600">
+                            <p class="text-xs text-gray-500 mt-1 italic">Escolha uma data para forçar a atualização ou deixe em branco para manter a atual.</p>
+                        </div>
+
                         <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                             <button type="button" onclick="window.fecharEditar()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium transition">Cancelar</button>
                             <button type="submit" id="btnSalvarEdicao" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 font-bold transition shadow-sm">Salvar Alterações</button>
@@ -934,13 +941,29 @@
             e.preventDefault();
             const btn = document.getElementById('btnSalvarEdicao'); btn.innerText = "Salvando..."; btn.disabled = true;
             try {
-                await updateDoc(doc(db, "territorios", document.getElementById('editIdDoc').value), {
+                // 1. Prepara os dados básicos
+                const dadosAtualizados = {
                     nome: document.getElementById('editNomeTerritorio').value,
                     mapaUrl: document.getElementById('editLinkMapa').value
-                });
+                };
+
+                // 2. Verifica se o Admin escolheu forçar uma nova data no calendário
+                const novaDataStr = document.getElementById('editDataConclusao').value;
+                if (novaDataStr) {
+                    // T12:00:00 blinda contra o fuso horário roubar 1 dia da data selecionada
+                    dadosAtualizados.ultimaConclusao = new Date(`${novaDataStr}T12:00:00`); 
+                }
+
+                // 3. Salva no banco e limpa o formulário
+                await updateDoc(doc(db, "territorios", document.getElementById('editIdDoc').value), dadosAtualizados);
                 window.fecharEditar();
-            } catch (error) { alert("Erro ao editar território."); } 
-            finally { btn.innerText = "Salvar Alterações"; btn.disabled = false; }
+                document.getElementById('editDataConclusao').value = ''; // Limpa o campo
+                
+            } catch (error) { 
+                alert("Erro ao editar território."); 
+            } finally { 
+                btn.innerText = "Salvar Alterações"; btn.disabled = false; 
+            }
         });
 
         window.abrirDesignar = async (idDoc, numero, foiConcluido) => {
