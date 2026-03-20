@@ -183,7 +183,10 @@
         <section id="aba-territorios" class="aba-conteudo bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                 <h2 class="text-lg font-bold text-gray-700 flex items-center gap-2">📍 Controle de Territórios</h2>
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2 justify-end">
+                    <button onclick="document.getElementById('modalImportarJSON').classList.remove('hidden')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-bold transition shadow-sm flex items-center gap-2">
+                        📥 Importar Histórico
+                    </button>
                     <button id="btnExportarCSV" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-bold transition shadow-sm flex items-center gap-2">
                         📄 Exportar CSV
                     </button>
@@ -359,6 +362,30 @@
                 </form>
             </div>
         </div>
+
+        <div id="modalImportarJSON" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
+            <div class="relative p-6 border w-full max-w-2xl shadow-xl rounded-lg bg-white">
+                <h3 class="text-lg font-bold text-purple-800 mb-2 border-b pb-2 flex items-center gap-2">📥 Importador Inteligente de Histórico</h3>
+                <p class="text-sm text-gray-600 mb-4">Cole o código JSON gerado pela planilha abaixo. O sistema ajustará o fuso horário (meio-dia) e criará o Log de Auditoria automaticamente.</p>
+                
+                <form id="formImportarJSON" class="space-y-4">
+                    <div>
+                        <textarea id="jsonInputData" rows="8" required placeholder='Exemplo: [{"numero": "01", "data": "2026-01-27", "responsavel": "Glebston"}]' class="block w-full border border-gray-300 rounded-md p-2 text-sm font-mono bg-gray-50 focus:ring-purple-500 focus:border-purple-500"></textarea>
+                    </div>
+                    
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-xs text-yellow-800">
+                        <p class="font-bold">⚠️ Atenção:</p>
+                        <p>Certifique-se de que os números dos territórios no JSON existem no sistema (Ex: "01", "02").</p>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t">
+                        <button type="button" onclick="document.getElementById('modalImportarJSON').classList.add('hidden')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium hover:bg-gray-200 transition">Cancelar</button>
+                        <button type="submit" id="btnProcessarJSON" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md font-bold shadow-sm transition">Processar e Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
     </main>
 
     <script type="module">
@@ -385,8 +412,8 @@
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        // Importação CORRIGIDA com getDoc incluído
-        import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // Importação CORRIGIDA com getDoc e writeBatch incluídos
+        import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, addDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyBDSPdjkdU4mWRmd1ABjDLbjjbp8gqZWJs",
@@ -1156,6 +1183,74 @@
                 console.error("Erro ao compartilhar:", error);
             }
         };
+
+        // ------------------------------------------------------------------
+        // NOVO MOTOR DE IMPORTAÇÃO E AUDITORIA (JSON)
+        // ------------------------------------------------------------------
+        document.getElementById('formImportarJSON').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnProcessarJSON');
+            const textarea = document.getElementById('jsonInputData');
+            
+            btn.innerText = "Processando..."; 
+            btn.disabled = true;
+
+            try {
+                // 1. Tenta ler o texto como JSON
+                const dados = JSON.parse(textarea.value.trim());
+                
+                if (!Array.isArray(dados)) {
+                    throw new Error("O formato precisa ser uma lista [ {...}, {...} ]");
+                }
+
+                // 2. Prepara a gravação em lote (Batch) do Firebase
+                const batch = writeBatch(db);
+                let contador = 0;
+
+                dados.forEach(item => {
+                    if (item.numero && item.data) {
+                        const refTerritorio = doc(db, "territorios", `T${item.numero}`);
+                        
+                        // O SEGREDO DO FUSO HORÁRIO: Injeta T12:00:00 para blindar a data (Meio-dia UTC)
+                        const dataConclusao = new Date(`${item.data}T12:00:00Z`);
+                        
+                        // A. Atualiza a data principal do território
+                        batch.update(refTerritorio, {
+                            ultimaConclusao: dataConclusao
+                        });
+
+                        // B. Cria o Log de Auditoria na sub-coleção "historico"
+                        const refHistorico = doc(collection(refTerritorio, "historico"));
+                        batch.set(refHistorico, {
+                            data: dataConclusao,
+                            responsavel: item.responsavel || "Importado do Legado",
+                            importadoEm: new Date().toISOString()
+                        });
+                        
+                        contador++;
+                    }
+                });
+
+                if (contador === 0) {
+                    alert("Nenhum dado válido encontrado no JSON. Verifique as chaves 'numero' e 'data'.");
+                    return;
+                }
+
+                // 3. Dispara o lote para o Firebase
+                await batch.commit();
+                
+                alert(`✅ Sucesso! ${contador} registros de histórico foram importados e salvos.`);
+                document.getElementById('modalImportarJSON').classList.add('hidden');
+                textarea.value = ''; // Limpa o campo
+                
+            } catch (error) {
+                console.error("Erro na importação:", error);
+                alert("❌ Erro ao ler o JSON. Verifique se copiou e colou corretamente com [ ] e chaves.\n\nDetalhe do erro: " + error.message);
+            } finally {
+                btn.innerText = "Processar e Salvar"; 
+                btn.disabled = false;
+            }
+        });
         
     </script>
 </body>
