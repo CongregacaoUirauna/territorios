@@ -173,7 +173,7 @@
                                 atualizadoEm: new Date().toISOString()
                             }, { merge: true });
 
-                            logMsg(`Sincronizado [${idDoc}]: Conclusão: ${ultimaConclusaoFinal ? ultimaConclusaoFinal.toLocaleDateString('pt-BR') : 'Nova'} | Status: ${status}`);
+                            logMsg(`Sincronizado [${idDoc}]: Conclusão: ${ultimaConclusaoFinal ? new Date(ultimaConclusaoFinal).toLocaleDateString('pt-BR') : 'Nova'} | Status: ${status}`);
                             contador++;
                         });
 
