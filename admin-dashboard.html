@@ -1185,7 +1185,7 @@
         };
 
         // ------------------------------------------------------------------
-        // NOVO MOTOR DE IMPORTAÇÃO E AUDITORIA (JSON)
+        // NOVO MOTOR DE IMPORTAÇÃO E AUDITORIA (JSON) - CORRIGIDO
         // ------------------------------------------------------------------
         document.getElementById('formImportarJSON').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1196,13 +1196,15 @@
             btn.disabled = true;
 
             try {
-                // 1. Tenta ler o texto como JSON
+                // 1. Tenta ler o texto como JSON (A linha que havia sumido!)
+                const textoLimpo = textarea.value.trim();
+                const dados = JSON.parse(textoLimpo);
+                
                 if (!Array.isArray(dados)) {
                     throw new Error("O formato precisa ser uma lista [ {...}, {...} ]");
                 }
 
                 // ORDENAÇÃO DE SEGURANÇA: Organiza da data mais antiga para a mais nova.
-                // Isso garante que a data mais recente substitua as velhas e fique como 'ultimaConclusao'.
                 dados.sort((a, b) => new Date(a.data) - new Date(b.data));
 
                 // 2. Prepara a gravação em lote (Batch) do Firebase
