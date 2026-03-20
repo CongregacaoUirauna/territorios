@@ -24,7 +24,19 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div class="flex overflow-x-auto border-b border-gray-300 pb-2 mb-6 gap-2 sm:gap-4">
+            <button onclick="window.mudarAba('visaoGeral')" id="tab-visaoGeral" class="aba-btn bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-bold shadow transition whitespace-nowrap">📊 Visão Geral</button>
+            <button onclick="window.mudarAba('territorios')" id="tab-territorios" class="aba-btn bg-white text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium border border-gray-200 transition whitespace-nowrap">📍 Territórios</button>
+            <button onclick="window.mudarAba('mural')" id="tab-mural" class="aba-btn bg-white text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium border border-gray-200 transition whitespace-nowrap">📢 Mural</button>
+            <button onclick="window.mudarAba('equipe')" id="tab-equipe" class="aba-btn bg-white text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium border border-gray-200 transition whitespace-nowrap">👥 Equipe</button>
+            <button onclick="window.mudarAba('regras')" id="tab-regras" class="aba-btn bg-white text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium border border-gray-200 transition whitespace-nowrap">⚙️ Regras</button>
+        </div>
+
+        <section id="aba-visaoGeral" class="aba-conteudo block">
+            <p class="text-gray-500 italic p-6 bg-white rounded-lg border border-gray-200">O painel de indicadores (KPIs) será injetado aqui na Cirurgia 2.</p>
+        </section>
+
+        <section id="aba-regras" class="aba-conteudo bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
             <h2 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">⚙️ Regras Inteligentes do Sistema</h2>
             <div class="space-y-4">
                 
@@ -53,7 +65,7 @@
             </div>
         </section>
 
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <section id="aba-mural" class="aba-conteudo bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
             <h2 class="text-lg font-bold text-gray-700 mb-6 flex items-center gap-2">📢 Mural de Avisos e Programação de Campo</h2>
             
             <form id="formAviso" class="bg-blue-50/50 p-5 rounded-lg border border-blue-100 space-y-5 mb-8 shadow-inner">
@@ -135,7 +147,7 @@
             </div>
         </section>
 
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <section id="aba-territorios" class="aba-conteudo bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                 <h2 class="text-lg font-bold text-gray-700 flex items-center gap-2">📍 Controle de Territórios</h2>
                 <div class="flex gap-2">
@@ -169,7 +181,7 @@
             </div>
         </section>
 
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <section id="aba-equipe" class="aba-conteudo bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-lg font-bold text-gray-700 flex items-center gap-2">👥 Gestão da Equipe (Autorizações)</h2>
             </div>
@@ -310,6 +322,27 @@
     </main>
 
     <script type="module">
+        // --- FUNÇÃO DO SISTEMA DE ABAS (SPA) ---
+        window.mudarAba = (abaId) => {
+            // 1. Esconde todas as seções
+            document.querySelectorAll('.aba-conteudo').forEach(sec => {
+                sec.classList.add('hidden');
+                sec.classList.remove('block');
+            });
+            // 2. Tira o azul de todos os botões
+            document.querySelectorAll('.aba-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'shadow', 'font-bold');
+                btn.classList.add('bg-white', 'text-gray-600', 'font-medium');
+            });
+            // 3. Mostra a seção clicada
+            document.getElementById(`aba-${abaId}`).classList.remove('hidden');
+            document.getElementById(`aba-${abaId}`).classList.add('block');
+            // 4. Pinta o botão clicado de azul
+            const btnAtivo = document.getElementById(`tab-${abaId}`);
+            btnAtivo.classList.remove('bg-white', 'text-gray-600', 'font-medium');
+            btnAtivo.classList.add('bg-blue-600', 'text-white', 'shadow', 'font-bold');
+        };
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         // Importação CORRIGIDA com getDoc incluído
