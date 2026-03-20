@@ -1197,11 +1197,13 @@
 
             try {
                 // 1. Tenta ler o texto como JSON
-                const dados = JSON.parse(textarea.value.trim());
-                
                 if (!Array.isArray(dados)) {
                     throw new Error("O formato precisa ser uma lista [ {...}, {...} ]");
                 }
+
+                // ORDENAÇÃO DE SEGURANÇA: Organiza da data mais antiga para a mais nova.
+                // Isso garante que a data mais recente substitua as velhas e fique como 'ultimaConclusao'.
+                dados.sort((a, b) => new Date(a.data) - new Date(b.data));
 
                 // 2. Prepara a gravação em lote (Batch) do Firebase
                 const batch = writeBatch(db);
