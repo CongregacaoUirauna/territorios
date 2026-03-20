@@ -94,8 +94,8 @@
                         const batch = writeBatch(db);
                         let contador = 0;
 
-                        // NOVO TRADUTOR BLINDADO: Evita bug de fuso horário e padroniza para ISO string
-                        const parseDataBR = (str) => {
+                        // TRADUTOR DE DATAS PARA FORMATO NATIVO (O Firebase converte para Timestamp automaticamente)
+                        const parseDataNativa = (str) => {
                             if (!str) return null;
                             const limpo = String(str).trim();
                             const separador = limpo.includes('/') ? '/' : (limpo.includes('-') ? '-' : null);
@@ -107,12 +107,11 @@
                             const d = parseInt(pts[0], 10), m = parseInt(pts[1], 10), y = parseInt(pts[2], 10);
                             if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
 
-                            // 12:00 UTC garante que o fuso do Brasil não roube 1 dia da data!
-                            const dataObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-                            return dataObj.toISOString(); 
+                            // 12:00 evita que o fuso horário atrase um dia na exibição
+                            return new Date(y, m - 1, d, 12, 0, 0); 
                         };
 
-                        // Localizador avançado de colunas (Ignora acentos e espaços invisíveis do CSV)
+                        // Localizador avançado de colunas (Ignora acentos e espaços)
                         const lerColuna = (linha, nomeExato) => {
                             const chave = Object.keys(linha).find(k => k.trim().toLowerCase() === nomeExato.toLowerCase() || k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === nomeExato.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
                             return chave ? linha[chave] : null;
@@ -125,34 +124,42 @@
                             const numeroFormatado = String(numRaw).padStart(2, '0');
                             const idDoc = `T${numeroFormatado}`;
                             
-                            // 1. Busca o nome oficial (Prioriza o CSV, usa Dicionário como fallback)
                             const nomeCSV = lerColuna(row, 'Nome') || lerColuna(row, 'Descrição');
                             const nome = nomeCSV ? String(nomeCSV).trim() : (nomesTerritorios[parseInt(numRaw)] || "Sem nome");
 
-                            // 2. BUSCA DA VERDADE CRONOLÓGICA
+                            // 2. BUSCA DA VERDADE E SALVAMENTO DE AUDITORIA HISTÓRICA
                             let status = "Disponível";
                             let responsavel = null;
                             let dataInicioFinal = null;
-                            let ultimaConclusaoFinal = parseDataBR(lerColuna(row, 'Última Data Concluída'));
+                            let ultimaConclusaoFinal = parseDataNativa(lerColuna(row, 'Última Data Concluída'));
+                            let historicoAuditoria = []; // AQUI NÓS SALVAMOS O PASSADO INTEIRO
 
-                            // Varre todos os 5 slots para encontrar o estado mais atual
+                            // Varre todos os 5 slots do CSV para construir a auditoria
                             for (let i = 1; i <= 5; i++) {
                                 const designado = lerColuna(row, `Designado ${i}`);
                                 const dInicioStr = lerColuna(row, `Data Designação ${i}`);
                                 const dFimStr = lerColuna(row, `Data Conclusão ${i}`);
 
                                 if (designado && String(designado).trim() !== "") {
-                                    const dInicioObj = parseDataBR(dInicioStr);
-                                    const dFimObj = parseDataBR(dFimStr);
+                                    const dInicioObj = parseDataNativa(dInicioStr);
+                                    const dFimObj = parseDataNativa(dFimStr);
 
-                                    // Se tem designado mas NÃO tem data de conclusão, este é o responsável atual!
+                                    // Adiciona cada registro antigo ao Log de Auditoria
+                                    historicoAuditoria.push({
+                                        responsavel: String(designado).trim(),
+                                        dataInicio: dInicioObj,
+                                        dataConclusao: dFimObj,
+                                        cicloPlanilha: i
+                                    });
+
+                                    // Define quem é o responsável atual se o mapa não foi concluído
                                     if (!dFimObj) {
                                         status = "Em andamento";
                                         responsavel = String(designado).trim();
                                         dataInicioFinal = dInicioObj;
                                     } 
                                     
-                                    // Compara as datas (como agora geramos padrão ISO, a matemática não falha)
+                                    // Mantém a última data de conclusão 100% atualizada
                                     if (dFimObj) {
                                         if (!ultimaConclusaoFinal || dFimObj > ultimaConclusaoFinal) {
                                             ultimaConclusaoFinal = dFimObj;
@@ -168,12 +175,14 @@
                                 nome: nome,
                                 status: status,
                                 responsavelAtual: responsavel,
-                                dataInicio: dataInicioFinal, // Agora é um objeto Date (Timestamp)
-                                ultimaConclusao: ultimaConclusaoFinal, // Agora é um objeto Date (Timestamp)
-                                atualizadoEm: new Date().toISOString()
+                                dataInicio: dataInicioFinal,
+                                ultimaConclusao: ultimaConclusaoFinal, // Data pura para o Dashboard ler
+                                historicoAuditoria: historicoAuditoria, // TODO O HISTÓRICO SALVO AQUI!
+                                atualizadoEm: new Date() 
                             }, { merge: true });
-
-                            logMsg(`Sincronizado [${idDoc}]: Conclusão: ${ultimaConclusaoFinal ? new Date(ultimaConclusaoFinal).toLocaleDateString('pt-BR') : 'Nova'} | Status: ${status}`);
+                            
+                            // Log visual na tela preta
+                            logMsg(`Sincronizado [${idDoc}]: Histórico preservado (${historicoAuditoria.length} registros passados). Status: ${status}`);
                             contador++;
                         });
 
