@@ -873,11 +873,10 @@
             });
         }
 
-        // ------------------------------------------------------------------
-        // EXPORTAÇÃO: CSV (CORRIGIDO PARA O WINDOWS) E NOVO PDF
+       // ------------------------------------------------------------------
+        // EXPORTAÇÃO: CSV E PDF (COM HISTÓRICO COMPLETO)
         // ------------------------------------------------------------------
 
-        // FUNÇÃO AUXILIAR UNIVERSAL PARA DATAS DE EXPORTAÇÃO
         const formatarDataExportacao = (dataBase) => {
             if (!dataBase) return '';
             if (typeof dataBase.toDate === 'function') return dataBase.toDate().toLocaleDateString('pt-BR');
@@ -889,47 +888,86 @@
             return dataBase; 
         };
 
+        // NOVO MOTOR: Busca a gaveta de 'historico' de todos os mapas
+        async function compilarAuditoriaCompleta() {
+            const usuariosSnapshot = await getDocs(collection(db, "usuarios"));
+            const mapaNomes = {};
+            usuariosSnapshot.forEach(docSnap => {
+                const u = docSnap.data();
+                if (u.email) mapaNomes[u.email] = u.nome || u.email;
+            });
+
+            const querySnapshot = await getDocs(collection(db, "territorios"));
+            let auditoriaDados = [];
+
+            // Laço para abrir cada território e extrair os históricos passados
+            for (const docSnap of querySnapshot.docs) {
+                const t = docSnap.data();
+                const idDoc = docSnap.id;
+                const numeroMapa = t.numero || '-';
+
+                const histSnapshot = await getDocs(collection(db, "territorios", idDoc, "historico"));
+                let histArray = [];
+
+                histSnapshot.forEach(hSnap => {
+                    histArray.push(hSnap.data());
+                });
+
+                if (histArray.length > 0) {
+                    // Ordena o histórico do mapa: Mais recente no topo
+                    histArray.sort((a, b) => {
+                        const dA = a.data && typeof a.data.toDate === 'function' ? a.data.toDate() : new Date(a.data);
+                        const dB = b.data && typeof b.data.toDate === 'function' ? b.data.toDate() : new Date(b.data);
+                        return dB - dA;
+                    });
+
+                    // Cria uma linha na tabela para CADA vez que o mapa foi trabalhado
+                    histArray.forEach(h => {
+                        auditoriaDados.push([
+                            numeroMapa,
+                            formatarDataExportacao(h.data),
+                            h.responsavel || '-'
+                        ]);
+                    });
+                } else {
+                    // Se não tiver histórico gravado, mostra apenas a última situação
+                    const responsavel = t.responsavelAtual ? (mapaNomes[t.responsavelAtual] || t.responsavelAtual) : '-';
+                    auditoriaDados.push([
+                        numeroMapa,
+                        t.ultimaConclusao ? formatarDataExportacao(t.ultimaConclusao) : 'Inédito',
+                        responsavel
+                    ]);
+                }
+            }
+
+            // Ordenação Global: Organiza a lista inteira pelo Número do Mapa (1, 2, 3...)
+            auditoriaDados.sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+            return auditoriaDados;
+        }
+
         // 1. EXPORTAR CSV
         document.getElementById('btnExportarCSV').addEventListener('click', async () => {
             try {
                 const btn = document.getElementById('btnExportarCSV');
                 btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
 
-                const usuariosSnapshot = await getDocs(collection(db, "usuarios"));
-                const mapaNomes = {};
-                usuariosSnapshot.forEach(docSnap => {
-                    const u = docSnap.data();
-                    if (u.email) mapaNomes[u.email] = u.nome || u.email;
-                });
+                const dados = await compilarAuditoriaCompleta();
+                let csvContent = "Território Nº;Data de Conclusão;Responsável\n";
 
-                const querySnapshot = await getDocs(collection(db, "territorios"));
-                let csvContent = "Território Nº;Última Data Concluída;Responsável Atual;Status;Nota de Pausa\n";
-
-                querySnapshot.forEach((doc) => {
-                    const t = doc.data();
-                    const numero = t.numero || '';
-                    const ultimaData = formatarDataExportacao(t.ultimaConclusao);
-                    const emailResponsavel = t.responsavelAtual;
-                    const designado = emailResponsavel ? (mapaNomes[emailResponsavel] || emailResponsavel) : 'Nenhum';
-                    const status = t.status || '';
-                    const nota = t.notaPausa || '';
-
-                    csvContent += `${numero};${ultimaData};${designado};${status};${nota}\n`;
+                dados.forEach(linha => {
+                    csvContent += `${linha[0]};${linha[1]};${linha[2]}\n`;
                 });
 
                 const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.setAttribute("href", url);
-                link.setAttribute("download", `auditoria_territorios_${new Date().toISOString().split('T')[0]}.csv`);
+                link.setAttribute("download", `auditoria_completa_${new Date().toISOString().split('T')[0]}.csv`);
                 document.body.appendChild(link); 
                 link.click(); 
                 
-                // CORREÇÃO WINDOWS: Espera 500ms antes de limpar o link para o Windows ter tempo de ler o cache
-                setTimeout(() => {
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                }, 500);
+                // CORREÇÃO WINDOWS: Deixa o rastro do arquivo vivo por 5 segundos para o antivírus não dar erro
+                setTimeout(() => { document.body.removeChild(link); }, 5000);
 
             } catch (error) {
                 alert("Erro ao gerar o CSV.");
@@ -940,65 +978,42 @@
             }
         });
 
-        // 2. EXPORTAR PDF (NOVO)
+        // 2. EXPORTAR PDF
         document.getElementById('btnExportarPDF').addEventListener('click', async () => {
             try {
                 const btn = document.getElementById('btnExportarPDF');
                 btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
 
-                // Importa a biblioteca global injetada no <head>
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
+                
+                // Usa o mesmo motor para buscar os dados completos
+                const dados = await compilarAuditoriaCompleta();
 
-                const usuariosSnapshot = await getDocs(collection(db, "usuarios"));
-                const mapaNomes = {};
-                usuariosSnapshot.forEach(docSnap => {
-                    const u = docSnap.data();
-                    if (u.email) mapaNomes[u.email] = u.nome || u.email;
-                });
-
-                const querySnapshot = await getDocs(collection(db, "territorios"));
-                let linhasTabela = [];
-
-                querySnapshot.forEach((docSnap) => {
-                    const t = docSnap.data();
-                    const responsavel = t.responsavelAtual ? (mapaNomes[t.responsavelAtual] || t.responsavelAtual) : '-';
-                    linhasTabela.push([
-                        t.numero || '-',
-                        formatarDataExportacao(t.ultimaConclusao) || 'Inédito',
-                        responsavel,
-                        t.status || '-',
-                        t.notaPausa || ''
-                    ]);
-                });
-
-                // Ordena a tabela matematicamente do mapa 01 em diante
-                linhasTabela.sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
-
-                // Desenha o Cabeçalho do PDF
+                // Cabeçalho do PDF
                 doc.setFontSize(16);
-                doc.setTextColor(30, 58, 138); // Azul escuro
-                doc.text("Auditoria Geral de Territórios", 14, 15);
+                doc.setTextColor(30, 58, 138); 
+                doc.text("Auditoria Completa de Territórios (Histórico)", 14, 15);
                 
                 doc.setFontSize(10);
                 doc.setTextColor(100, 100, 100);
                 doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 22);
 
-                // Desenha a Tabela
+                // Tabela Ajustada (Apenas Nº, Data e Responsável)
                 doc.autoTable({
                     startY: 28,
-                    head: [['Nº', 'Últ. Conclusão', 'Responsável', 'Status', 'Nota']],
-                    body: linhasTabela,
+                    head: [['Nº do Mapa', 'Data de Conclusão', 'Responsável']],
+                    body: dados,
                     theme: 'striped',
-                    headStyles: { fillColor: [37, 99, 235] }, // Cor azul do Tailwind
-                    styles: { fontSize: 9, cellPadding: 3 },
+                    headStyles: { fillColor: [37, 99, 235] }, 
+                    styles: { fontSize: 10, cellPadding: 3 },
                     columnStyles: {
-                        0: { fontStyle: 'bold', halign: 'center' }, // Centraliza os números
+                        0: { fontStyle: 'bold', halign: 'center', cellWidth: 30 }, 
+                        1: { halign: 'center', cellWidth: 50 }
                     }
                 });
 
-                // Baixa o arquivo
-                doc.save(`Auditoria_Territorios_PDF_${new Date().toISOString().split('T')[0]}.pdf`);
+                doc.save(`Auditoria_Completa_PDF_${new Date().toISOString().split('T')[0]}.pdf`);
 
             } catch (error) {
                 alert("Erro ao gerar o PDF.");
