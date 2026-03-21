@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Admin - Gestão de Territórios</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans antialiased">
 
@@ -187,8 +189,11 @@
                     <button onclick="document.getElementById('modalImportarJSON').classList.remove('hidden')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-bold transition shadow-sm flex items-center gap-2">
                         📥 Importar Histórico
                     </button>
+                    <button id="btnExportarPDF" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-bold transition shadow-sm flex items-center gap-2">
+                        📄 Exportar PDF
+                    </button>
                     <button id="btnExportarCSV" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-bold transition shadow-sm flex items-center gap-2">
-                        📄 Exportar CSV
+                        📊 Exportar CSV
                     </button>
                     <button id="btnNovoTerritorio" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold transition shadow-sm">
                         + Novo Território
@@ -868,54 +873,48 @@
             });
         }
 
+        // ------------------------------------------------------------------
+        // EXPORTAÇÃO: CSV (CORRIGIDO PARA O WINDOWS) E NOVO PDF
+        // ------------------------------------------------------------------
+
+        // FUNÇÃO AUXILIAR UNIVERSAL PARA DATAS DE EXPORTAÇÃO
+        const formatarDataExportacao = (dataBase) => {
+            if (!dataBase) return '';
+            if (typeof dataBase.toDate === 'function') return dataBase.toDate().toLocaleDateString('pt-BR');
+            const d = new Date(dataBase);
+            if (!isNaN(d)) {
+                d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+                return d.toLocaleDateString('pt-BR');
+            }
+            return dataBase; 
+        };
+
+        // 1. EXPORTAR CSV
         document.getElementById('btnExportarCSV').addEventListener('click', async () => {
             try {
                 const btn = document.getElementById('btnExportarCSV');
                 btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
 
-                // 1. CRIANDO O DICIONÁRIO DE NOMES
-                // Busca todos os usuários e mapeia: { "email@gmail.com": "Glebston Lima" }
                 const usuariosSnapshot = await getDocs(collection(db, "usuarios"));
                 const mapaNomes = {};
                 usuariosSnapshot.forEach(docSnap => {
                     const u = docSnap.data();
-                    if (u.email) {
-                        mapaNomes[u.email] = u.nome || u.email; // Se não tiver nome, usa o email por segurança
-                    }
+                    if (u.email) mapaNomes[u.email] = u.nome || u.email;
                 });
 
-                // 2. BUSCANDO OS TERRITÓRIOS
                 const querySnapshot = await getDocs(collection(db, "territorios"));
-                let csvContent = "Território Nº;Última Data Concluída;Designado 1;Data Designação 1;Data Conclusão 1\n";
-                
-                const formatarDataCSV = (dataBase) => {
-                    if (!dataBase) return '';
-                    if (typeof dataBase.toDate === 'function') return dataBase.toDate().toLocaleDateString('pt-BR');
-                    const d = new Date(dataBase);
-                    if (!isNaN(d)) {
-                        d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
-                        return d.toLocaleDateString('pt-BR');
-                    }
-                    return dataBase; 
-                };
+                let csvContent = "Território Nº;Última Data Concluída;Responsável Atual;Status;Nota de Pausa\n";
 
                 querySnapshot.forEach((doc) => {
                     const t = doc.data();
-                    
                     const numero = t.numero || '';
-                    const ultimaData = formatarDataCSV(t.ultimaConclusao);
-                    
-                    // 3. A TRADUÇÃO: Pega o e-mail e busca o Nome Oficial no dicionário
+                    const ultimaData = formatarDataExportacao(t.ultimaConclusao);
                     const emailResponsavel = t.responsavelAtual;
-                    let designado = '';
-                    if (emailResponsavel) {
-                        designado = mapaNomes[emailResponsavel] || emailResponsavel; 
-                    }
+                    const designado = emailResponsavel ? (mapaNomes[emailResponsavel] || emailResponsavel) : 'Nenhum';
+                    const status = t.status || '';
+                    const nota = t.notaPausa || '';
 
-                    const dataDesignacao = formatarDataCSV(t.dataInicio);
-                    const dataConclusao = formatarDataCSV(t.ultimaConclusao); 
-
-                    csvContent += `${numero};${ultimaData};${designado};${dataDesignacao};${dataConclusao}\n`;
+                    csvContent += `${numero};${ultimaData};${designado};${status};${nota}\n`;
                 });
 
                 const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -923,13 +922,90 @@
                 const link = document.createElement("a");
                 link.setAttribute("href", url);
                 link.setAttribute("download", `auditoria_territorios_${new Date().toISOString().split('T')[0]}.csv`);
-                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                document.body.appendChild(link); 
+                link.click(); 
+                
+                // CORREÇÃO WINDOWS: Espera 500ms antes de limpar o link para o Windows ter tempo de ler o cache
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 500);
+
             } catch (error) {
                 alert("Erro ao gerar o CSV.");
                 console.error(error);
             } finally {
                 const btn = document.getElementById('btnExportarCSV');
-                btn.innerHTML = '📄 Exportar CSV'; btn.disabled = false;
+                btn.innerHTML = '📊 Exportar CSV'; btn.disabled = false;
+            }
+        });
+
+        // 2. EXPORTAR PDF (NOVO)
+        document.getElementById('btnExportarPDF').addEventListener('click', async () => {
+            try {
+                const btn = document.getElementById('btnExportarPDF');
+                btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
+
+                // Importa a biblioteca global injetada no <head>
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                const usuariosSnapshot = await getDocs(collection(db, "usuarios"));
+                const mapaNomes = {};
+                usuariosSnapshot.forEach(docSnap => {
+                    const u = docSnap.data();
+                    if (u.email) mapaNomes[u.email] = u.nome || u.email;
+                });
+
+                const querySnapshot = await getDocs(collection(db, "territorios"));
+                let linhasTabela = [];
+
+                querySnapshot.forEach((docSnap) => {
+                    const t = docSnap.data();
+                    const responsavel = t.responsavelAtual ? (mapaNomes[t.responsavelAtual] || t.responsavelAtual) : '-';
+                    linhasTabela.push([
+                        t.numero || '-',
+                        formatarDataExportacao(t.ultimaConclusao) || 'Inédito',
+                        responsavel,
+                        t.status || '-',
+                        t.notaPausa || ''
+                    ]);
+                });
+
+                // Ordena a tabela matematicamente do mapa 01 em diante
+                linhasTabela.sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
+                // Desenha o Cabeçalho do PDF
+                doc.setFontSize(16);
+                doc.setTextColor(30, 58, 138); // Azul escuro
+                doc.text("Auditoria Geral de Territórios", 14, 15);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 22);
+
+                // Desenha a Tabela
+                doc.autoTable({
+                    startY: 28,
+                    head: [['Nº', 'Últ. Conclusão', 'Responsável', 'Status', 'Nota']],
+                    body: linhasTabela,
+                    theme: 'striped',
+                    headStyles: { fillColor: [37, 99, 235] }, // Cor azul do Tailwind
+                    styles: { fontSize: 9, cellPadding: 3 },
+                    columnStyles: {
+                        0: { fontStyle: 'bold', halign: 'center' }, // Centraliza os números
+                    }
+                });
+
+                // Baixa o arquivo
+                doc.save(`Auditoria_Territorios_PDF_${new Date().toISOString().split('T')[0]}.pdf`);
+
+            } catch (error) {
+                alert("Erro ao gerar o PDF.");
+                console.error(error);
+            } finally {
+                const btn = document.getElementById('btnExportarPDF');
+                btn.innerHTML = '📄 Exportar PDF'; btn.disabled = false;
             }
         });
 
