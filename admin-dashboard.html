@@ -874,11 +874,11 @@
         }
 
        // ------------------------------------------------------------------
-        // EXPORTAÇÃO: CSV E PDF (COM HISTÓRICO COMPLETO)
+        // EXPORTAÇÃO: PDF (ÚLTIMOS 6 MESES, SEM DUPLICATAS)
         // ------------------------------------------------------------------
 
         const formatarDataExportacao = (dataBase) => {
-            if (!dataBase) return '';
+            if (!dataBase) return '-';
             if (typeof dataBase.toDate === 'function') return dataBase.toDate().toLocaleDateString('pt-BR');
             const d = new Date(dataBase);
             if (!isNaN(d)) {
@@ -888,7 +888,6 @@
             return dataBase; 
         };
 
-        // NOVO MOTOR: Busca a gaveta de 'historico' de todos os mapas
         async function compilarAuditoriaCompleta() {
             const usuariosSnapshot = await getDocs(collection(db, "usuarios"));
             const mapaNomes = {};
@@ -900,7 +899,10 @@
             const querySnapshot = await getDocs(collection(db, "territorios"));
             let auditoriaDados = [];
 
-            // Laço para abrir cada território e extrair os históricos passados
+            // A ENGRENAGEM DO TEMPO: Pega a data de hoje e volta 6 meses
+            const dataLimite = new Date();
+            dataLimite.setMonth(dataLimite.getMonth() - 6);
+
             for (const docSnap of querySnapshot.docs) {
                 const t = docSnap.data();
                 const idDoc = docSnap.id;
@@ -908,77 +910,58 @@
 
                 const histSnapshot = await getDocs(collection(db, "territorios", idDoc, "historico"));
                 let histArray = [];
+                let assinaturasUnicas = new Set(); // O "Mata-Duplicata"
 
                 histSnapshot.forEach(hSnap => {
-                    histArray.push(hSnap.data());
+                    const h = hSnap.data();
+                    const dConclusao = h.data && typeof h.data.toDate === 'function' ? h.data.toDate() : new Date(h.data);
+                    
+                    // FILTRO 1: Só passa se a data for mais nova que 6 meses atrás
+                    if (dConclusao >= dataLimite) {
+                        const strDataConclusao = formatarDataExportacao(dConclusao);
+                        const responsavel = h.responsavel || '-';
+                        
+                        // Cria um "carimbo" para verificar se essa linha exata já existe
+                        const assinatura = `${strDataConclusao}-${responsavel}`;
+                        
+                        // FILTRO 2: Só guarda se o carimbo for inédito (mata as repetições)
+                        if (!assinaturasUnicas.has(assinatura) && responsavel !== "Ajuste Geral") {
+                            assinaturasUnicas.add(assinatura);
+                            histArray.push({
+                                dataConclusao: dConclusao,
+                                strDataConclusao: strDataConclusao,
+                                responsavel: responsavel,
+                                strDataInicio: h.dataInicio ? formatarDataExportacao(h.dataInicio) : '-' // Preparado para o futuro
+                            });
+                        }
+                    }
                 });
 
                 if (histArray.length > 0) {
-                    // Ordena o histórico do mapa: Mais recente no topo
-                    histArray.sort((a, b) => {
-                        const dA = a.data && typeof a.data.toDate === 'function' ? a.data.toDate() : new Date(a.data);
-                        const dB = b.data && typeof b.data.toDate === 'function' ? b.data.toDate() : new Date(b.data);
-                        return dB - dA;
-                    });
-
-                    // Cria uma linha na tabela para CADA vez que o mapa foi trabalhado
+                    // Ordena do mais recente para o mais antigo dentro do mapa
+                    histArray.sort((a, b) => b.dataConclusao - a.dataConclusao); 
+                    
                     histArray.forEach(h => {
-                        auditoriaDados.push([
-                            numeroMapa,
-                            formatarDataExportacao(h.data),
-                            h.responsavel || '-'
-                        ]);
+                        auditoriaDados.push([ numeroMapa, h.responsavel, h.strDataInicio, h.strDataConclusao ]);
                     });
                 } else {
-                    // Se não tiver histórico gravado, mostra apenas a última situação
+                    // Se não houver nada nos últimos 6 meses, exibe a situação atual da capa
                     const responsavel = t.responsavelAtual ? (mapaNomes[t.responsavelAtual] || t.responsavelAtual) : '-';
                     auditoriaDados.push([
-                        numeroMapa,
-                        t.ultimaConclusao ? formatarDataExportacao(t.ultimaConclusao) : 'Inédito',
-                        responsavel
+                        numeroMapa, 
+                        responsavel, 
+                        t.dataInicio ? formatarDataExportacao(t.dataInicio) : '-', 
+                        t.ultimaConclusao ? formatarDataExportacao(t.ultimaConclusao) : 'Sem dados recentes'
                     ]);
                 }
             }
 
-            // Ordenação Global: Organiza a lista inteira pelo Número do Mapa (1, 2, 3...)
+            // Ordena a tabela geral por Número do Mapa (1, 2, 3...)
             auditoriaDados.sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
             return auditoriaDados;
         }
 
-        // 1. EXPORTAR CSV
-        document.getElementById('btnExportarCSV').addEventListener('click', async () => {
-            try {
-                const btn = document.getElementById('btnExportarCSV');
-                btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-                const dados = await compilarAuditoriaCompleta();
-                let csvContent = "Território Nº;Data de Conclusão;Responsável\n";
-
-                dados.forEach(linha => {
-                    csvContent += `${linha[0]};${linha[1]};${linha[2]}\n`;
-                });
-
-                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", `auditoria_completa_${new Date().toISOString().split('T')[0]}.csv`);
-                document.body.appendChild(link); 
-                link.click(); 
-                
-                // CORREÇÃO WINDOWS: Deixa o rastro do arquivo vivo por 5 segundos para o antivírus não dar erro
-                setTimeout(() => { document.body.removeChild(link); }, 5000);
-
-            } catch (error) {
-                alert("Erro ao gerar o CSV.");
-                console.error(error);
-            } finally {
-                const btn = document.getElementById('btnExportarCSV');
-                btn.innerHTML = '📊 Exportar CSV'; btn.disabled = false;
-            }
-        });
-
-        // 2. EXPORTAR PDF
+        // GERADOR DE PDF
         document.getElementById('btnExportarPDF').addEventListener('click', async () => {
             try {
                 const btn = document.getElementById('btnExportarPDF');
@@ -987,33 +970,33 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Usa o mesmo motor para buscar os dados completos
                 const dados = await compilarAuditoriaCompleta();
 
-                // Cabeçalho do PDF
+                // Cabeçalho Bonito
                 doc.setFontSize(16);
                 doc.setTextColor(30, 58, 138); 
-                doc.text("Auditoria Completa de Territórios (Histórico)", 14, 15);
+                doc.text("Auditoria de Territórios (Últimos 6 Meses)", 14, 15);
                 
                 doc.setFontSize(10);
                 doc.setTextColor(100, 100, 100);
                 doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 22);
 
-                // Tabela Ajustada (Apenas Nº, Data e Responsável)
+                // Nova Tabela com as colunas certas
                 doc.autoTable({
                     startY: 28,
-                    head: [['Nº do Mapa', 'Data de Conclusão', 'Responsável']],
+                    head: [['Nº', 'Responsável', 'Data de Designação', 'Data de Conclusão']],
                     body: dados,
                     theme: 'striped',
                     headStyles: { fillColor: [37, 99, 235] }, 
                     styles: { fontSize: 10, cellPadding: 3 },
                     columnStyles: {
-                        0: { fontStyle: 'bold', halign: 'center', cellWidth: 30 }, 
-                        1: { halign: 'center', cellWidth: 50 }
+                        0: { fontStyle: 'bold', halign: 'center', cellWidth: 20 }, 
+                        2: { halign: 'center', cellWidth: 45 },
+                        3: { halign: 'center', cellWidth: 45 }
                     }
                 });
 
-                doc.save(`Auditoria_Completa_PDF_${new Date().toISOString().split('T')[0]}.pdf`);
+                doc.save(`Auditoria_6_Meses_${new Date().toISOString().split('T')[0]}.pdf`);
 
             } catch (error) {
                 alert("Erro ao gerar o PDF.");
