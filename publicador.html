@@ -553,6 +553,51 @@
                     alertaRegras.classList.add('hidden');
                 }
 
+                // 3.5. Aplica Regra: Modo Campanha Direcionada (Esconde mapas já trabalhados do lote)
+                if (config.campanhaAtiva && config.campanhaMapas && config.campanhaMapas.length > 0) {
+                    const inicioCampanha = new Date(config.campanhaInicio);
+                    inicioCampanha.setHours(0,0,0,0);
+                    
+                    // Verifica o status de TODOS os mapas para saber se o ciclo já fechou
+                    const todosMapasSnap = await getDocs(collection(db, "territorios"));
+                    let todosFeitos = true;
+                    
+                    todosMapasSnap.forEach(docSnap => {
+                        const t = docSnap.data();
+                        if (config.campanhaMapas.includes(t.numero)) {
+                            if (!t.ultimaConclusao) { todosFeitos = false; }
+                            else {
+                                const dC = typeof t.ultimaConclusao.toDate === 'function' ? t.ultimaConclusao.toDate() : new Date(t.ultimaConclusao);
+                                dC.setHours(0,0,0,0);
+                                if (dC < inicioCampanha) todosFeitos = false;
+                            }
+                        }
+                    });
+
+                    // Se a campanha ainda está rodando (nem todos do lote foram feitos)
+                    if (!todosFeitos) {
+                        mapas = mapas.filter(m => {
+                            // Se o mapa faz parte da campanha, vamos ver se ele já foi trabalhado
+                            if (config.campanhaMapas.includes(m.numero)) {
+                                if (m.ultimaConclusao) {
+                                    const dataConc = typeof m.ultimaConclusao.toDate === 'function' ? m.ultimaConclusao.toDate() : new Date(m.ultimaConclusao);
+                                    dataConc.setHours(0,0,0,0);
+                                    // Se já foi concluído desde que a campanha começou, ESCONDE ele da lista!
+                                    if (dataConc >= inicioCampanha) return false; 
+                                }
+                            }
+                            // Mantém na lista os mapas da campanha pendentes e todos os outros mapas livres (ex: 05, 30...)
+                            return true; 
+                        });
+                        
+                        // Adiciona um aviso visual suave para a congregação focar nos mapas alvo
+                        if (!config.varreduraCompleta) {
+                            alertaRegras.innerHTML = `<strong>🎯 Foco da Congregação:</strong> Estamos trabalhando prioritariamente os mapas: ${config.campanhaMapas.join(', ')}.`;
+                            alertaRegras.classList.remove('hidden');
+                        }
+                    }
+                }
+
                 // 4. Aplica Regra: Sugestão Automática (Ordena pelo mais antigo)
                 if (config.sugestaoAutomatica && mapas.length > 0) {
                     mapas.sort((a, b) => {
