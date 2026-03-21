@@ -1392,12 +1392,18 @@
             // Trava 2: MODO CAMPANHA DIRECIONADA
             if (window.regrasSistema && window.regrasSistema.campanhaAtiva && window.regrasSistema.campanhaMapas.includes(numero)) {
                 
+                // O SEGREDO: Zera as horas, minutos e segundos para comparar apenas os DIAS
                 const inicioCampanha = new Date(window.regrasSistema.campanhaInicio);
+                inicioCampanha.setHours(0,0,0,0); 
+                
                 const terr = window.territoriosEmMemoria.find(t => t.numero === numero);
                 let mapaJaFeitoNestaCampanha = false;
                 
                 if (terr && terr.ultimaConclusao) {
                     const dataConc = typeof terr.ultimaConclusao.toDate === 'function' ? terr.ultimaConclusao.toDate() : new Date(terr.ultimaConclusao);
+                    dataConc.setHours(0,0,0,0); // Zera as horas da conclusão também
+                    
+                    // Agora sim, ele só olha se o dia é igual ou maior
                     if (dataConc >= inicioCampanha) mapaJaFeitoNestaCampanha = true;
                 }
 
@@ -1409,12 +1415,14 @@
                         
                         if (!tCampanha.ultimaConclusao) { todosFeitos = false; break; }
                         const dC = typeof tCampanha.ultimaConclusao.toDate === 'function' ? tCampanha.ultimaConclusao.toDate() : new Date(tCampanha.ultimaConclusao);
+                        dC.setHours(0,0,0,0); // Zera as horas dos outros mapas também
+                        
                         if (dC < inicioCampanha) { todosFeitos = false; break; }
                     }
 
                     if (!todosFeitos) {
                         alert(`🎯 MODO CAMPANHA:\nO Território ${numero} já foi concluído nesta rodada da campanha.\n\nFaltam outros mapas da lista para que ele possa ser trabalhado novamente.`);
-                        return; // BLOQUEIA
+                        return; // BLOQUEIA A ABERTURA
                     }
                 }
             }
@@ -1433,7 +1441,7 @@
                 querySnapshot.forEach((docSnap) => { select.innerHTML += `<option value="${docSnap.data().email}">${docSnap.data().email}</option>`; });
             } catch (error) { select.innerHTML = '<option value="">Erro ao carregar irmãos</option>'; }
         };
-
+        
     </script>
 </body>
 </html>
