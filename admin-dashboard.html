@@ -86,8 +86,17 @@
                     </label>
                 </div>
 
+                <div class="flex items-center justify-between bg-gray-50 p-4 rounded border border-gray-100 transition hover:bg-gray-100">
+                    <div>
+                        <h3 class="font-semibold text-gray-800">Varredura Completa (Bloquear Repetidos)</h3>
+                        <p class="text-sm text-gray-500">Exige que os responsáveis escolham apenas mapas que ainda não foram trabalhados nesta rodada.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggleVarredura" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
                 </div>
-                
+
                 <div class="bg-purple-50 p-5 rounded-lg border border-purple-200 mt-6 shadow-sm">
                     <h3 class="font-bold text-purple-800 mb-2 flex items-center gap-2">🎯 Modo Campanha Direcionada</h3>
                     <p class="text-sm text-gray-700 mb-4">Defina um lote prioritário. O sistema travará a repetição destes mapas até que TODOS do lote sejam cobertos. Mapas fora da lista continuam livres.</p>
@@ -680,29 +689,36 @@
         };
 
         // ------------------------------------------------------------------
-        // REGRAS INTELIGENTES GERAIS
+        // REGRAS INTELIGENTES GERAIS E MODO CAMPANHA
         // ------------------------------------------------------------------
-        // Variáveis Globais de Memória (Cirurgia 2)
         window.regrasSistema = {};
         window.territoriosEmMemoria = [];
 
         function iniciarEscutaDeRegras() {
             const regrasRef = doc(db, "configuracoes", "gerais");
+            
+            // Busca os elementos com segurança para evitar erros "null"
+            const btnSugestoes = document.getElementById('toggleSugestoes');
+            const btnVarredura = document.getElementById('toggleVarredura');
+            const inputCampanha = document.getElementById('inputCampanhaMapas');
+            const statusCamp = document.getElementById('statusCampanha');
+
             onSnapshot(regrasRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const dados = docSnap.data();
                     window.regrasSistema = dados; // Salva na memória global
 
-                    toggleSugestoes.checked = dados.sugestaoAutomatica || false;
-                    toggleVarredura.checked = dados.varreduraCompleta || false;
+                    if (btnSugestoes) btnSugestoes.checked = dados.sugestaoAutomatica || false;
+                    if (btnVarredura) btnVarredura.checked = dados.varreduraCompleta || false;
                     
-                    // Atualiza a interface da Campanha Direcionada
-                    if (dados.campanhaAtiva && dados.campanhaMapas) {
-                        document.getElementById('inputCampanhaMapas').value = dados.campanhaMapas.join(', ');
-                        document.getElementById('statusCampanha').innerHTML = `<span class="text-green-700 font-bold">🟢 Campanha ATIVA com ${dados.campanhaMapas.length} mapas.</span>`;
-                    } else {
-                        document.getElementById('inputCampanhaMapas').value = '';
-                        document.getElementById('statusCampanha').innerHTML = `<span class="text-gray-500 italic">Nenhuma campanha ativa no momento.</span>`;
+                    if (inputCampanha && statusCamp) {
+                        if (dados.campanhaAtiva && dados.campanhaMapas && dados.campanhaMapas.length > 0) {
+                            inputCampanha.value = dados.campanhaMapas.join(', ');
+                            statusCamp.innerHTML = `<span class="text-green-700 font-bold">🟢 Campanha ATIVA com ${dados.campanhaMapas.length} mapas.</span>`;
+                        } else {
+                            inputCampanha.value = '';
+                            statusCamp.innerHTML = `<span class="text-gray-500 italic">Nenhuma campanha ativa no momento.</span>`;
+                        }
                     }
                 }
             });
@@ -710,14 +726,11 @@
             const salvarRegra = async (campo, valor) => {
                 try {
                     await setDoc(regrasRef, { [campo]: valor }, { merge: true });
-                } catch (error) {
-                    console.error("Erro ao salvar regra:", error);
-                    alert("Erro de permissão ao salvar configuração.");
-                }
+                } catch (error) { console.error("Erro:", error); }
             };
 
-            toggleSugestoes.addEventListener('change', (e) => salvarRegra('sugestaoAutomatica', e.target.checked));
-            toggleVarredura.addEventListener('change', (e) => salvarRegra('varreduraCompleta', e.target.checked));
+            if (btnSugestoes) btnSugestoes.addEventListener('change', (e) => salvarRegra('sugestaoAutomatica', e.target.checked));
+            if (btnVarredura) btnVarredura.addEventListener('change', (e) => salvarRegra('varreduraCompleta', e.target.checked));
         }
 
         // ------------------------------------------------------------------
@@ -827,7 +840,9 @@
             
             onSnapshot(territoriosRef, (snapshot) => {
                 tabelaTerritorios.innerHTML = ''; 
-                window.territoriosEmMemoria = []; // <-- LINHA NOVA: Zera a memória
+                window.territoriosEmMemoria = []; // <-- INJETE ESTA LINHA AQUI
+                
+                if (snapshot.empty) {
                 
                 if (snapshot.empty) {
                     tabelaTerritorios.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum território cadastrado ainda.</td></tr>`;
@@ -839,7 +854,7 @@
 
                 snapshot.forEach((docSnap) => {
                     const t = docSnap.data();
-                    window.territoriosEmMemoria.push(t); // <-- LINHA NOVA: Alimenta a memória
+                    window.territoriosEmMemoria.push(t); // <-- INJETE ESTA LINHA AQUI
                     const id = docSnap.id;
                     const linkMapaGoogle = t.mapaUrl; 
                     const linkImagemGitHub = `https://congregacaouirauna.github.io/territorios/mapas/mapa-${t.numero}.jpg`;
@@ -1353,21 +1368,21 @@
         });
 
         // ------------------------------------------------------------------
-        // MOTOR: MODO CAMPANHA DIRECIONADA
+        // MOTOR DO MODO CAMPANHA DIRECIONADA E TRAVA DE DESIGNAÇÃO
         // ------------------------------------------------------------------
         document.getElementById('btnSalvarCampanha').addEventListener('click', async () => {
             const input = document.getElementById('inputCampanhaMapas').value;
             if(!input) return;
             
-            // Pega o texto " 1, 5 , 12" -> converte em array limpo: ["01", "05", "12"]
+            // Pega o texto e limpa: " 1, 5" vira ["01", "05"]
             const mapas = input.split(',').map(m => m.trim().padStart(2, '0')).filter(m => m !== "00");
             
             try {
-                await updateDoc(doc(db, "configuracoes", "gerais"), {
+                await setDoc(doc(db, "configuracoes", "gerais"), {
                     campanhaAtiva: true,
                     campanhaMapas: mapas,
-                    campanhaInicio: new Date().toISOString() // Trava o tempo zero da campanha
-                });
+                    campanhaInicio: new Date().toISOString()
+                }, { merge: true });
                 alert("🎯 Campanha Direcionada ativada com sucesso!");
             } catch (e) { alert("Erro ao salvar campanha."); }
         });
@@ -1375,20 +1390,20 @@
         document.getElementById('btnLimparCampanha').addEventListener('click', async () => {
             if(!confirm("Deseja realmente encerrar a campanha atual?")) return;
             try {
-                await updateDoc(doc(db, "configuracoes", "gerais"), {
+                await setDoc(doc(db, "configuracoes", "gerais"), {
                     campanhaAtiva: false,
                     campanhaMapas: [],
                     campanhaInicio: null
-                });
+                }, { merge: true });
             } catch (e) { alert("Erro ao limpar campanha."); }
         });
 
-        // ------------------------------------------------------------------
-        // SOBRESCREVE A FUNÇÃO ABRIR DESIGNAR PARA INCLUIR A TRAVA DA CAMPANHA
-        // ------------------------------------------------------------------
+        // SOBRESCREVE A FUNÇÃO ABRIR DESIGNAR
         window.abrirDesignar = async (idDoc, numero, foiConcluido) => {
+            
             // Trava 1: Varredura Completa
-            if (document.getElementById('toggleVarredura').checked && foiConcluido) {
+            const toggleV = document.getElementById('toggleVarredura');
+            if (toggleV && toggleV.checked && foiConcluido) {
                 alert("🛑 A Varredura Completa está ATIVA! Escolha um mapa não trabalhado."); return; 
             }
 
@@ -1399,14 +1414,12 @@
                 const terr = window.territoriosEmMemoria.find(t => t.numero === numero);
                 let mapaJaFeitoNestaCampanha = false;
                 
-                // Verifica se ESTE mapa já foi trabalhado desde que a campanha começou
                 if (terr && terr.ultimaConclusao) {
                     const dataConc = typeof terr.ultimaConclusao.toDate === 'function' ? terr.ultimaConclusao.toDate() : new Date(terr.ultimaConclusao);
                     if (dataConc >= inicioCampanha) mapaJaFeitoNestaCampanha = true;
                 }
 
                 if (mapaJaFeitoNestaCampanha) {
-                    // Verifica se TODOS os outros mapas do Lote também já foram feitos
                     let todosFeitos = true;
                     for (let numCampanha of window.regrasSistema.campanhaMapas) {
                         const tCampanha = window.territoriosEmMemoria.find(t => t.numero === numCampanha);
@@ -1418,13 +1431,13 @@
                     }
 
                     if (!todosFeitos) {
-                        alert(`🎯 MODO CAMPANHA: O Território ${numero} já foi coberto nesta rodada.\n\nFaltam outros mapas da lista para que ele possa ser trabalhado novamente.`);
-                        return; // 🛑 BLOQUEIA A ABERTURA DO MODAL
+                        alert(`🎯 MODO CAMPANHA:\nO Território ${numero} já foi concluído nesta rodada da campanha.\n\nFaltam outros mapas da lista para que ele possa ser trabalhado novamente.`);
+                        return; // BLOQUEIA
                     }
                 }
             }
 
-            // Se passou por todas as travas, abre o modal de designação
+            // Se passou pelas travas, abre o modal
             document.getElementById('designarIdDoc').value = idDoc;
             document.getElementById('designarNumText').innerText = numero;
             document.getElementById('modalDesignar').classList.remove('hidden');
@@ -1438,7 +1451,7 @@
                 querySnapshot.forEach((docSnap) => { select.innerHTML += `<option value="${docSnap.data().email}">${docSnap.data().email}</option>`; });
             } catch (error) { select.innerHTML = '<option value="">Erro ao carregar irmãos</option>'; }
         };
-        
+
     </script>
 </body>
 </html>
