@@ -86,15 +86,20 @@
                     </label>
                 </div>
 
-                <div class="flex items-center justify-between bg-gray-50 p-4 rounded border border-gray-100 transition hover:bg-gray-100">
-                    <div>
-                        <h3 class="font-semibold text-gray-800">Varredura Completa (Bloquear Repetidos)</h3>
-                        <p class="text-sm text-gray-500">Exige que os responsáveis escolham apenas mapas que ainda não foram trabalhados nesta rodada.</p>
+                </div>
+                
+                <div class="bg-purple-50 p-5 rounded-lg border border-purple-200 mt-6 shadow-sm">
+                    <h3 class="font-bold text-purple-800 mb-2 flex items-center gap-2">🎯 Modo Campanha Direcionada</h3>
+                    <p class="text-sm text-gray-700 mb-4">Defina um lote prioritário. O sistema travará a repetição destes mapas até que TODOS do lote sejam cobertos. Mapas fora da lista continuam livres.</p>
+                    <div class="flex flex-col sm:flex-row gap-3 items-end">
+                        <div class="flex-1 w-full">
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Mapas do Lote (separados por vírgula)</label>
+                            <input type="text" id="inputCampanhaMapas" placeholder="Ex: 01, 05, 12, 15" class="block w-full border border-purple-300 rounded-md p-2 text-sm focus:ring-purple-500 focus:border-purple-500 bg-white">
+                        </div>
+                        <button id="btnSalvarCampanha" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-bold transition shadow-sm whitespace-nowrap h-[38px]">Gravar Lote</button>
+                        <button id="btnLimparCampanha" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md text-sm font-bold transition shadow-sm whitespace-nowrap h-[38px]">Encerrar Campanha</button>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="toggleVarredura" class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
+                    <div id="statusCampanha" class="mt-3 text-sm font-medium"></div>
                 </div>
 
             </div>
@@ -677,13 +682,28 @@
         // ------------------------------------------------------------------
         // REGRAS INTELIGENTES GERAIS
         // ------------------------------------------------------------------
+        // Variáveis Globais de Memória (Cirurgia 2)
+        window.regrasSistema = {};
+        window.territoriosEmMemoria = [];
+
         function iniciarEscutaDeRegras() {
             const regrasRef = doc(db, "configuracoes", "gerais");
             onSnapshot(regrasRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const dados = docSnap.data();
+                    window.regrasSistema = dados; // Salva na memória global
+
                     toggleSugestoes.checked = dados.sugestaoAutomatica || false;
                     toggleVarredura.checked = dados.varreduraCompleta || false;
+                    
+                    // Atualiza a interface da Campanha Direcionada
+                    if (dados.campanhaAtiva && dados.campanhaMapas) {
+                        document.getElementById('inputCampanhaMapas').value = dados.campanhaMapas.join(', ');
+                        document.getElementById('statusCampanha').innerHTML = `<span class="text-green-700 font-bold">🟢 Campanha ATIVA com ${dados.campanhaMapas.length} mapas.</span>`;
+                    } else {
+                        document.getElementById('inputCampanhaMapas').value = '';
+                        document.getElementById('statusCampanha').innerHTML = `<span class="text-gray-500 italic">Nenhuma campanha ativa no momento.</span>`;
+                    }
                 }
             });
 
@@ -807,6 +827,7 @@
             
             onSnapshot(territoriosRef, (snapshot) => {
                 tabelaTerritorios.innerHTML = ''; 
+                window.territoriosEmMemoria = []; // <-- LINHA NOVA: Zera a memória
                 
                 if (snapshot.empty) {
                     tabelaTerritorios.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum território cadastrado ainda.</td></tr>`;
@@ -818,6 +839,7 @@
 
                 snapshot.forEach((docSnap) => {
                     const t = docSnap.data();
+                    window.territoriosEmMemoria.push(t); // <-- LINHA NOVA: Alimenta a memória
                     const id = docSnap.id;
                     const linkMapaGoogle = t.mapaUrl; 
                     const linkImagemGitHub = `https://congregacaouirauna.github.io/territorios/mapas/mapa-${t.numero}.jpg`;
@@ -1329,6 +1351,93 @@
                 btn.disabled = false;
             }
         });
+
+        // ------------------------------------------------------------------
+        // MOTOR: MODO CAMPANHA DIRECIONADA
+        // ------------------------------------------------------------------
+        document.getElementById('btnSalvarCampanha').addEventListener('click', async () => {
+            const input = document.getElementById('inputCampanhaMapas').value;
+            if(!input) return;
+            
+            // Pega o texto " 1, 5 , 12" -> converte em array limpo: ["01", "05", "12"]
+            const mapas = input.split(',').map(m => m.trim().padStart(2, '0')).filter(m => m !== "00");
+            
+            try {
+                await updateDoc(doc(db, "configuracoes", "gerais"), {
+                    campanhaAtiva: true,
+                    campanhaMapas: mapas,
+                    campanhaInicio: new Date().toISOString() // Trava o tempo zero da campanha
+                });
+                alert("🎯 Campanha Direcionada ativada com sucesso!");
+            } catch (e) { alert("Erro ao salvar campanha."); }
+        });
+
+        document.getElementById('btnLimparCampanha').addEventListener('click', async () => {
+            if(!confirm("Deseja realmente encerrar a campanha atual?")) return;
+            try {
+                await updateDoc(doc(db, "configuracoes", "gerais"), {
+                    campanhaAtiva: false,
+                    campanhaMapas: [],
+                    campanhaInicio: null
+                });
+            } catch (e) { alert("Erro ao limpar campanha."); }
+        });
+
+        // ------------------------------------------------------------------
+        // SOBRESCREVE A FUNÇÃO ABRIR DESIGNAR PARA INCLUIR A TRAVA DA CAMPANHA
+        // ------------------------------------------------------------------
+        window.abrirDesignar = async (idDoc, numero, foiConcluido) => {
+            // Trava 1: Varredura Completa
+            if (document.getElementById('toggleVarredura').checked && foiConcluido) {
+                alert("🛑 A Varredura Completa está ATIVA! Escolha um mapa não trabalhado."); return; 
+            }
+
+            // Trava 2: MODO CAMPANHA DIRECIONADA
+            if (window.regrasSistema && window.regrasSistema.campanhaAtiva && window.regrasSistema.campanhaMapas.includes(numero)) {
+                
+                const inicioCampanha = new Date(window.regrasSistema.campanhaInicio);
+                const terr = window.territoriosEmMemoria.find(t => t.numero === numero);
+                let mapaJaFeitoNestaCampanha = false;
+                
+                // Verifica se ESTE mapa já foi trabalhado desde que a campanha começou
+                if (terr && terr.ultimaConclusao) {
+                    const dataConc = typeof terr.ultimaConclusao.toDate === 'function' ? terr.ultimaConclusao.toDate() : new Date(terr.ultimaConclusao);
+                    if (dataConc >= inicioCampanha) mapaJaFeitoNestaCampanha = true;
+                }
+
+                if (mapaJaFeitoNestaCampanha) {
+                    // Verifica se TODOS os outros mapas do Lote também já foram feitos
+                    let todosFeitos = true;
+                    for (let numCampanha of window.regrasSistema.campanhaMapas) {
+                        const tCampanha = window.territoriosEmMemoria.find(t => t.numero === numCampanha);
+                        if (!tCampanha) continue; 
+                        
+                        if (!tCampanha.ultimaConclusao) { todosFeitos = false; break; }
+                        const dC = typeof tCampanha.ultimaConclusao.toDate === 'function' ? tCampanha.ultimaConclusao.toDate() : new Date(tCampanha.ultimaConclusao);
+                        if (dC < inicioCampanha) { todosFeitos = false; break; }
+                    }
+
+                    if (!todosFeitos) {
+                        alert(`🎯 MODO CAMPANHA: O Território ${numero} já foi coberto nesta rodada.\n\nFaltam outros mapas da lista para que ele possa ser trabalhado novamente.`);
+                        return; // 🛑 BLOQUEIA A ABERTURA DO MODAL
+                    }
+                }
+            }
+
+            // Se passou por todas as travas, abre o modal de designação
+            document.getElementById('designarIdDoc').value = idDoc;
+            document.getElementById('designarNumText').innerText = numero;
+            document.getElementById('modalDesignar').classList.remove('hidden');
+            
+            const select = document.getElementById('selectResponsavel');
+            select.innerHTML = '<option value="">Buscando irmãos...</option>';
+            try {
+                const q = query(collection(db, "usuarios"), where("papel", "==", "responsavel"));
+                const querySnapshot = await getDocs(q);
+                select.innerHTML = '<option value="" disabled selected>Escolha o irmão...</option>';
+                querySnapshot.forEach((docSnap) => { select.innerHTML += `<option value="${docSnap.data().email}">${docSnap.data().email}</option>`; });
+            } catch (error) { select.innerHTML = '<option value="">Erro ao carregar irmãos</option>'; }
+        };
         
     </script>
 </body>
