@@ -840,9 +840,7 @@
             
             onSnapshot(territoriosRef, (snapshot) => {
                 tabelaTerritorios.innerHTML = ''; 
-                window.territoriosEmMemoria = []; // <-- INJETE ESTA LINHA AQUI
-                
-                if (snapshot.empty) {
+                window.territoriosEmMemoria = []; 
                 
                 if (snapshot.empty) {
                     tabelaTerritorios.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">Nenhum território cadastrado ainda.</td></tr>`;
@@ -1104,22 +1102,6 @@
             }
         });
 
-        window.abrirDesignar = async (idDoc, numero, foiConcluido) => {
-            if (document.getElementById('toggleVarredura').checked && foiConcluido) {
-                alert("🛑 A Varredura Completa está ATIVA! Escolha um mapa não trabalhado."); return; 
-            }
-            document.getElementById('designarIdDoc').value = idDoc;
-            document.getElementById('designarNumText').innerText = numero;
-            document.getElementById('modalDesignar').classList.remove('hidden');
-            const select = document.getElementById('selectResponsavel');
-            select.innerHTML = '<option value="">Buscando irmãos...</option>';
-            try {
-                const q = query(collection(db, "usuarios"), where("papel", "==", "responsavel"));
-                const querySnapshot = await getDocs(q);
-                select.innerHTML = '<option value="" disabled selected>Escolha o irmão...</option>';
-                querySnapshot.forEach((docSnap) => { select.innerHTML += `<option value="${docSnap.data().email}">${docSnap.data().email}</option>`; });
-            } catch (error) { select.innerHTML = '<option value="">Erro ao carregar irmãos</option>'; }
-        };
         window.fecharDesignar = () => document.getElementById('modalDesignar').classList.add('hidden');
 
         document.getElementById('formDesignar').addEventListener('submit', async (e) => {
