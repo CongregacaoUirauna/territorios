@@ -79,11 +79,7 @@
                             <span id="totalHorasPioneiro" class="text-xs font-black bg-yellow-400 text-blue-900 px-2 py-1 rounded-md shadow-sm">Total: 0h</span>
                         </div>
                         
-                        <div class="flex gap-2 mb-3">
-                            <input type="number" id="diaTrabalho" placeholder="Dia" min="1" max="31" class="w-1/4 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 text-center focus:ring-2 focus:ring-yellow-400 outline-none">
-                            <input type="number" id="horasTrabalho" placeholder="Horas" min="1" step="0.5" class="w-2/4 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 text-center focus:ring-2 focus:ring-yellow-400 outline-none">
-                            <button id="btnAddHora" class="w-1/4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-black text-xl transition-transform active:scale-95 shadow-md flex justify-center items-center h-[44px]">+</button>
-                        </div>
+                        <input type="time" id="horasTrabalho" required class="w-2/4 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 text-center focus:ring-2 focus:ring-yellow-400 outline-none">
                         
                         <ul id="listaHorasDiarias" class="space-y-1.5 max-h-32 overflow-y-auto pr-2 text-sm">
                             <li class="text-blue-200 italic text-center text-xs py-2">Nenhum registro no mês.</li>
@@ -713,21 +709,33 @@
             if (!currentUserEmail) return;
             const salvos = localStorage.getItem(`horas_${currentUserEmail}`);
             if (salvos) {
-                registrosHoras = JSON.parse(salvos);
+                let dadosAntigos = JSON.parse(salvos);
+                
+                // MIGRACÃO AUTOMÁTICA: Converte dados decimais velhos para minutos para não quebrar a tela
+                registrosHoras = dadosAntigos.map(reg => {
+                    if (reg.horas !== undefined && reg.minutos === undefined) {
+                        const hStr = reg.horas.toString().split('.');
+                        const h = parseInt(hStr[0]) || 0;
+                        let m = 0;
+                        if (hStr[1]) m = parseInt(hStr[1].padEnd(2, '0').substring(0, 2));
+                        return { dia: reg.dia, minutos: (h * 60) + m };
+                    }
+                    return reg;
+                });
             } else {
                 registrosHoras = [];
             }
             atualizarUIRastreador();
         };
 
-        // Renderiza a tabela compacta
+        // Renderiza a tabela compacta com cálculo de tempo real
         function atualizarUIRastreador() {
             listaHorasDiarias.innerHTML = '';
-            let total = 0;
+            let totalMinutos = 0;
 
             if (registrosHoras.length === 0) {
                 listaHorasDiarias.innerHTML = '<li class="text-blue-200 italic text-center text-xs py-2">Nenhum registro no mês.</li>';
-                totalHorasPioneiro.innerText = 'Total: 0h';
+                totalHorasPioneiro.innerText = 'Total: 0:00h';
                 return;
             }
 
@@ -735,17 +743,27 @@
             registrosHoras.sort((a, b) => a.dia - b.dia);
 
             registrosHoras.forEach((reg, index) => {
-                total += reg.horas;
+                totalMinutos += reg.minutos; 
+                
+                // Formata os minutos da linha de volta para formato relógio (HH:mm)
+                const h = Math.floor(reg.minutos / 60);
+                const m = reg.minutos % 60;
+                const txtHora = `${h}:${m.toString().padStart(2, '0')}`;
+
                 const li = document.createElement('li');
                 li.className = "flex justify-between items-center bg-black/20 px-3 py-2 rounded-lg text-blue-50 border border-white/5";
                 li.innerHTML = `
-                    <span>Dia <strong class="text-yellow-300 ml-1 mr-2">${reg.dia}</strong> ➔ ${reg.horas}h</span>
+                    <span>Dia <strong class="text-yellow-300 ml-1 mr-2">${reg.dia}</strong> ➔ ${txtHora}h</span>
                     <button type="button" class="text-red-400 hover:text-red-300 font-bold text-xs" onclick="window.removerHora(${index})">❌</button>
                 `;
                 listaHorasDiarias.appendChild(li);
             });
             
-            totalHorasPioneiro.innerText = `Total: ${total}h`;
+            // Formata o Total Geral
+            const totH = Math.floor(totalMinutos / 60);
+            const totM = totalMinutos % 60;
+            totalHorasPioneiro.innerText = `Total: ${totH}:${totM.toString().padStart(2, '0')}h`;
+            
             // Salva na memória do navegador
             if(currentUserEmail) localStorage.setItem(`horas_${currentUserEmail}`, JSON.stringify(registrosHoras));
         }
@@ -755,17 +773,28 @@
             const diaInput = document.getElementById('diaTrabalho');
             const horasInput = document.getElementById('horasTrabalho');
             const dia = parseInt(diaInput.value);
-            const horas = parseFloat(horasInput.value); // Aceita números quebrados como 1.5
+            const valorTempo = horasInput.value; // Vem no formato "HH:mm"
 
-            if (!dia || dia < 1 || dia > 31 || !horas || horas <= 0) {
-                alert("Informe um dia válido (1 a 31) e uma quantidade de horas.");
+            if (!dia || dia < 1 || dia > 31 || !valorTempo) {
+                alert("Informe um dia válido (1 a 31) e o tempo trabalhado.");
                 return;
             }
 
-            registrosHoras.push({ dia, horas });
+            // Converte o "HH:mm" do relógio para minutos puros
+            const partes = valorTempo.split(':');
+            const horas = parseInt(partes[0]) || 0;
+            const minutos = parseInt(partes[1]) || 0;
+            const totalMinutosDia = (horas * 60) + minutos;
+
+            if (totalMinutosDia <= 0) {
+                alert("O tempo deve ser maior que zero.");
+                return;
+            }
+
+            registrosHoras.push({ dia: dia, minutos: totalMinutosDia });
             atualizarUIRastreador();
             
-            // Limpa os campos e devolve o cursor para facilitar
+            // Limpa os campos
             diaInput.value = '';
             horasInput.value = '';
             diaInput.focus();
@@ -790,22 +819,27 @@
             const grupo = selectGrupo.value;
             const estudos = document.getElementById('inputEstudos').value.trim() || "0";
             
-            let horas = "0";
+            let horasParaURL = "0";
             
-            // Se for Pioneiro, injeta a soma exata da tabela. Se for Publicador, envia 0 automaticamente.
             if (grupo !== 'Publicador') {
-                const soma = registrosHoras.reduce((acc, curr) => acc + curr.horas, 0);
-                horas = soma.toString();
-                if (soma === 0) {
+                const somaMinutos = registrosHoras.reduce((acc, curr) => acc + curr.minutos, 0);
+                
+                if (somaMinutos === 0) {
                     if(!confirm("Você selecionou Pioneiro, mas o rastreador está com 0 horas. Deseja enviar assim mesmo?")) return;
+                } else {
+                    // Transforma a soma de volta em relógio (Ex: 4:01) para enviar na URL
+                    const h = Math.floor(somaMinutos / 60);
+                    const m = somaMinutos % 60;
+                    horasParaURL = `${h}:${m.toString().padStart(2, '0')}`;
                 }
             }
 
             const nome = encodeURIComponent(window.currentUserNome); 
             const grupoEncode = encodeURIComponent(grupo); 
+            const horasEncode = encodeURIComponent(horasParaURL);
             
             const urlBaseDestino = "https://congregacaouirauna.github.io/relatorios/index.html"; 
-            const urlParametrizada = `${urlBaseDestino}?nome=${nome}&grupo=${grupoEncode}&horas=${horas}&estudos=${estudos}&participou=Sim`;
+            const urlParametrizada = `${urlBaseDestino}?nome=${nome}&grupo=${grupoEncode}&horas=${horasEncode}&estudos=${estudos}&participou=Sim`;
 
             window.open(urlParametrizada, '_blank');
         });
