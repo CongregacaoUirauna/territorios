@@ -79,7 +79,11 @@
                             <span id="totalHorasPioneiro" class="text-xs font-black bg-yellow-400 text-blue-900 px-2 py-1 rounded-md shadow-sm">Total: 0h</span>
                         </div>
                         
-                        <input type="time" id="horasTrabalho" required class="w-2/4 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 text-center focus:ring-2 focus:ring-yellow-400 outline-none">
+                        <div class="flex gap-2 mb-3">
+                            <input type="number" id="diaTrabalho" placeholder="Dia" min="1" max="31" class="w-1/4 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 text-center focus:ring-2 focus:ring-yellow-400 outline-none">
+                            <input type="time" id="horasTrabalho" required class="w-2/4 bg-white text-gray-900 border-0 rounded-lg text-sm p-2.5 text-center focus:ring-2 focus:ring-yellow-400 outline-none">
+                            <button id="btnAddHora" class="w-1/4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-black text-xl transition-transform active:scale-95 shadow-md flex justify-center items-center h-[44px]">+</button>
+                        </div>
                         
                         <ul id="listaHorasDiarias" class="space-y-1.5 max-h-32 overflow-y-auto pr-2 text-sm">
                             <li class="text-blue-200 italic text-center text-xs py-2">Nenhum registro no mês.</li>
